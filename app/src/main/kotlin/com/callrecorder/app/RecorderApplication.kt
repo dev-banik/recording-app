@@ -3,6 +3,7 @@ package com.callrecorder.app
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.callrecorder.app.util.NotificationUtils
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -16,6 +17,7 @@ class RecorderApplication : Application(), Configuration.Provider {
         super.onCreate()
         instance = this
         AppLogger.init(BuildConfig.DEBUG)
+        NotificationUtils.createChannels(this)
     }
 
     override val workManagerConfiguration: Configuration

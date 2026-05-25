@@ -11,7 +11,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.callrecorder.app.databinding.FragmentDashboardBinding
 import com.callrecorder.app.util.FileUtils
-import com.callrecorder.app.util.formatDate
 import com.callrecorder.app.util.formatDuration
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -32,6 +31,7 @@ class DashboardFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        binding.btnTestRecording.setOnClickListener { viewModel.toggleTestRecording() }
         observeState()
     }
 
@@ -42,6 +42,9 @@ class DashboardFragment : Fragment() {
                     binding.tvTotalRecordings.text = state.totalRecordings.toString()
                     binding.tvTotalDuration.text   = state.totalDurationMs.formatDuration()
                     binding.tvStorageUsed.text     = FileUtils.formatFileSize(state.storageUsedBytes)
+                    binding.tvStatus.text          = state.statusMessage
+                    binding.btnTestRecording.text  =
+                        if (state.isTestRecording) "Stop Test Recording" else "Test Mic Recording"
                 }
             }
         }

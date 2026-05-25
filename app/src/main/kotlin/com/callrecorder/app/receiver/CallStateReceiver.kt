@@ -8,6 +8,7 @@ import com.callrecorder.app.AppLogger
 import com.callrecorder.app.service.CallRecorderService
 import com.callrecorder.app.util.Constants
 import com.callrecorder.app.util.ContactUtils
+import com.callrecorder.app.util.NotificationUtils
 
 /**
  * Listens for phone call state changes and drives [CallRecorderService].
@@ -48,8 +49,16 @@ class CallStateReceiver : BroadcastReceiver() {
                         val phoneNumber = if (isIncoming) pendingIncomingNumber else pendingOutgoingNumber
                         val name = ContactUtils.resolveCallerName(context, phoneNumber)
 
+                        // Diagnostic: this notification fires even if the service fails to start.
+                        // If you see it during a call → receiver is working.
+                        // If you never see it → MIUI is blocking the PHONE_STATE broadcast.
+                        NotificationUtils.sendStatusNotification(context, "Call detected — starting recorder…")
+
                         val prefs = context.getSharedPreferences("recorder_settings", Context.MODE_PRIVATE)
-                        if (!prefs.getBoolean(Constants.PREF_AUTO_RECORD, true)) return
+                        if (!prefs.getBoolean(Constants.PREF_AUTO_RECORD, true)) {
+                            NotificationUtils.sendStatusNotification(context, "Auto-record is OFF in Settings")
+                            return
+                        }
 
                         try {
                             context.startForegroundService(
@@ -62,10 +71,12 @@ class CallStateReceiver : BroadcastReceiver() {
                             )
                         } catch (e: Exception) {
                             AppLogger.e(TAG, "Failed to start recorder service: ${e.message}")
+                            NotificationUtils.sendStatusNotification(context, "Recorder failed to start: ${e.message}")
                         }
                     }
 
                     TelephonyManager.EXTRA_STATE_IDLE -> {
+                        NotificationUtils.sendStatusNotification(context, "Call ended — saving recording…")
                         try {
                             context.startForegroundService(
                                 Intent(context, CallRecorderService::class.java).apply {

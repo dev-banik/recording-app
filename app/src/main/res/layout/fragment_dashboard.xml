@@ -145,12 +145,21 @@
                     android:layout_marginBottom="12dp" />
                 <TextView
                     android:id="@+id/tv_status"
-                    android:layout_width="wrap_content"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="Monitoring active"
                     android:textAppearance="?attr/textAppearanceBodyMedium" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- Diagnostic: test if microphone recording works at all -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_test_recording"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Test Mic Recording"
+            app:icon="@drawable/ic_mic" />
 
     </LinearLayout>
 </ScrollView>

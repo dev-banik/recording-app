@@ -9,6 +9,7 @@ object Constants {
     // ── Notification IDs ─────────────────────────────────────────────────
     const val NOTIF_RECORDING_ID  = 1001
     const val NOTIF_VOIP_ID       = 1002
+    const val NOTIF_STATUS_ID     = 1003
 
     // ── Service actions ───────────────────────────────────────────────────
     const val ACTION_START_RECORDING = "com.callrecorder.app.ACTION_START_RECORDING"

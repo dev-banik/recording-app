@@ -38,6 +38,19 @@ object NotificationUtils {
         )
     }
 
+    /** Posts a one-shot status notification — used for diagnostics and error reporting. */
+    fun sendStatusNotification(context: Context, message: String) {
+        createChannels(context)
+        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val n = NotificationCompat.Builder(context, Constants.CHANNEL_ALERTS)
+            .setContentTitle("Call Recorder")
+            .setContentText(message)
+            .setSmallIcon(R.drawable.ic_mic)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(Constants.NOTIF_STATUS_ID, n)
+    }
+
     fun buildRecordingNotification(
         context: Context,
         callerLabel: String,
