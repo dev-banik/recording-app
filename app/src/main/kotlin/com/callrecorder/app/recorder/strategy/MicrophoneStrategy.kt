@@ -74,7 +74,8 @@ class MicrophoneStrategy : RecordingStrategy {
 
     override fun stop() {
         isRecording = false
-        recordJob?.cancel()
+        // Don't cancel — let the coroutine finish the WAV header write naturally.
+        // The while(isRecording) loop exits on the next read() cycle (~100ms).
         recordJob = null
     }
 

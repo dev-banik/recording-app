@@ -100,9 +100,10 @@ class CallRecorderService : LifecycleService() {
     }
 
     private fun handleStop() {
+        // Read path/source BEFORE stopRecording() clears them
+        val path   = recorderManager.getActivePath() ?: run { stopSelf(); return }
+        val source = recorderManager.getActiveStrategyName()
         val durationMs = recorderManager.stopRecording()
-        val path       = recorderManager.getActivePath() ?: run { stopSelf(); return }
-        val source     = recorderManager.getActiveStrategyName()
 
         serviceScope.launch {
             val sizeBytes = FileUtils.fileSize(path)

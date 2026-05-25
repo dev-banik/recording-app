@@ -106,6 +106,8 @@ class AudioRecorderManager @Inject constructor(
         add(MediaRecorderStrategy.voiceDownlink())
         add(MediaRecorderStrategy.voiceUplink())
         add(MediaRecorderStrategy.voiceCommunication())
+        add(MediaRecorderStrategy.voiceRecognition())
+        add(MediaRecorderStrategy.unprocessed())
         add(MicrophoneStrategy())
     }
 

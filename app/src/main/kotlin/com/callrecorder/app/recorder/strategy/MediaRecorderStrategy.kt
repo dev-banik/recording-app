@@ -97,5 +97,7 @@ class MediaRecorderStrategy(
         fun voiceDownlink()      = MediaRecorderStrategy(MediaRecorder.AudioSource.VOICE_DOWNLINK)
         fun voiceUplink()        = MediaRecorderStrategy(MediaRecorder.AudioSource.VOICE_UPLINK)
         fun voiceCommunication() = MediaRecorderStrategy(MediaRecorder.AudioSource.VOICE_COMMUNICATION)
+        fun voiceRecognition()   = MediaRecorderStrategy(MediaRecorder.AudioSource.VOICE_RECOGNITION)
+        fun unprocessed()        = MediaRecorderStrategy(MediaRecorder.AudioSource.UNPROCESSED)
     }
 }
