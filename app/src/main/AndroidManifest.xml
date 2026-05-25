@@ -37,7 +37,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -109,7 +108,7 @@
             android:name=".service.VoipMonitorService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="microphone|mediaProjection|phoneCall"
+            android:foregroundServiceType="microphone|phoneCall"
             android:stopWithTask="false" />
 
         <!-- ══════════════════════════════════════════
