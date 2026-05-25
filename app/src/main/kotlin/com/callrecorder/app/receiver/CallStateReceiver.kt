@@ -11,25 +11,35 @@ import com.callrecorder.app.util.ContactUtils
 import com.callrecorder.app.util.NotificationUtils
 
 /**
- * Listens for phone call state changes and drives [CallRecorderService].
+ * Drives [CallRecorderService] via phone state broadcasts.
+ *
+ * KEY INSIGHT FOR MIUI: MIUI locks the audio hardware when a GSM call
+ * connects (MODE_IN_CALL). If we try to open AudioRecord AFTER the call
+ * connects (OFFHOOK), all sources fail. Starting on RINGING / NEW_OUTGOING_CALL
+ * opens AudioRecord BEFORE MIUI locks it, so the session persists through the call.
  *
  * State machine:
- *  RINGING   → remember inbound number, wait
- *  OFFHOOK   → start recording (outbound via NEW_OUTGOING_CALL first)
- *  IDLE      → stop recording
- *
- * Note on Android 10+ (PROCESS_OUTGOING_CALLS deprecated in API 29):
- *  On API 29+ outgoing number is passed via PHONE_STATE extra "incoming_number"
- *  when state=OFFHOOK. Manufacturer ROMs still populate it on earlier APIs.
+ *  RINGING          → start recording immediately (incoming, pre-answer)
+ *  NEW_OUTGOING_CALL → start recording immediately (outgoing, pre-connect)
+ *  OFFHOOK          → update caller metadata only (recording already running)
+ *  IDLE             → stop and save
  */
 class CallStateReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
+
             Intent.ACTION_NEW_OUTGOING_CALL -> {
-                pendingOutgoingNumber = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER) ?: ""
+                val number = intent.getStringExtra(Intent.EXTRA_PHONE_NUMBER) ?: ""
+                pendingOutgoingNumber = number
                 isIncoming = false
-                AppLogger.d(TAG, "Outgoing call to: $pendingOutgoingNumber")
+                AppLogger.d(TAG, "Outgoing call to: $number — starting recorder early")
+
+                if (!checkAutoRecord(context)) return
+                startService(context,
+                    phoneNumber = number,
+                    callerName  = ContactUtils.resolveCallerName(context, number),
+                    isIncoming  = false)
             }
 
             TelephonyManager.ACTION_PHONE_STATE_CHANGED -> {
@@ -37,49 +47,41 @@ class CallStateReceiver : BroadcastReceiver() {
                 val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
                     ?: pendingOutgoingNumber
 
-                AppLogger.d(TAG, "Phone state: $state number: $number")
+                AppLogger.d(TAG, "Phone state: $state  number: $number")
 
                 when (state) {
                     TelephonyManager.EXTRA_STATE_RINGING -> {
                         pendingIncomingNumber = number
                         isIncoming = true
+                        AppLogger.d(TAG, "Incoming call — starting recorder early (before MIUI audio lock)")
+
+                        if (!checkAutoRecord(context)) return
+                        startService(context,
+                            phoneNumber = number,
+                            callerName  = ContactUtils.resolveCallerName(context, number),
+                            isIncoming  = true)
                     }
 
                     TelephonyManager.EXTRA_STATE_OFFHOOK -> {
+                        // Recording is already running from RINGING / NEW_OUTGOING_CALL.
+                        // Send a second START so the service can update its caller metadata
+                        // with the resolved number/name (OFFHOOK may have better info).
                         val phoneNumber = if (isIncoming) pendingIncomingNumber else pendingOutgoingNumber
                         val name = ContactUtils.resolveCallerName(context, phoneNumber)
+                        NotificationUtils.sendStatusNotification(context, "Call connected — recording…")
+                        AppLogger.d(TAG, "OFFHOOK — updating caller info: $phoneNumber / $name")
 
-                        // Diagnostic: this notification fires even if the service fails to start.
-                        // If you see it during a call → receiver is working.
-                        // If you never see it → MIUI is blocking the PHONE_STATE broadcast.
-                        NotificationUtils.sendStatusNotification(context, "Call detected — starting recorder…")
-
-                        val prefs = context.getSharedPreferences("recorder_settings", Context.MODE_PRIVATE)
-                        if (!prefs.getBoolean(Constants.PREF_AUTO_RECORD, true)) {
-                            NotificationUtils.sendStatusNotification(context, "Auto-record is OFF in Settings")
-                            return
-                        }
-
-                        try {
-                            context.startForegroundService(
-                                Intent(context, CallRecorderService::class.java).apply {
-                                    action = Constants.ACTION_START_RECORDING
-                                    putExtra(Constants.EXTRA_PHONE_NUMBER, phoneNumber)
-                                    putExtra(Constants.EXTRA_CALLER_NAME, name)
-                                    putExtra(Constants.EXTRA_IS_INCOMING, isIncoming)
-                                }
-                            )
-                        } catch (e: Exception) {
-                            AppLogger.e(TAG, "Failed to start recorder service: ${e.message}")
-                            NotificationUtils.sendStatusNotification(context, "Recorder failed to start: ${e.message}")
-                        }
+                        if (!checkAutoRecord(context)) return
+                        startService(context,
+                            phoneNumber = phoneNumber,
+                            callerName  = name,
+                            isIncoming  = isIncoming)
                     }
 
                     TelephonyManager.EXTRA_STATE_IDLE -> {
                         NotificationUtils.sendStatusNotification(context, "Call ended — saving recording…")
+                        AppLogger.d(TAG, "IDLE — stopping recorder")
                         try {
-                            // startForeground() is now called at the very top of onStartCommand()
-                            // before any dispatching, so the 5-second requirement is always met.
                             context.startForegroundService(
                                 Intent(context, CallRecorderService::class.java).apply {
                                     action = Constants.ACTION_STOP_RECORDING
@@ -94,6 +96,27 @@ class CallStateReceiver : BroadcastReceiver() {
                     }
                 }
             }
+        }
+    }
+
+    private fun checkAutoRecord(context: Context): Boolean {
+        val prefs = context.getSharedPreferences("recorder_settings", Context.MODE_PRIVATE)
+        return prefs.getBoolean(Constants.PREF_AUTO_RECORD, true)
+    }
+
+    private fun startService(context: Context, phoneNumber: String, callerName: String, isIncoming: Boolean) {
+        try {
+            context.startForegroundService(
+                Intent(context, CallRecorderService::class.java).apply {
+                    action = Constants.ACTION_START_RECORDING
+                    putExtra(Constants.EXTRA_PHONE_NUMBER, phoneNumber)
+                    putExtra(Constants.EXTRA_CALLER_NAME, callerName)
+                    putExtra(Constants.EXTRA_IS_INCOMING, isIncoming)
+                }
+            )
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to start recorder service: ${e.message}")
+            NotificationUtils.sendStatusNotification(context, "Recorder start failed: ${e.message}")
         }
     }
 

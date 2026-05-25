@@ -104,12 +104,26 @@ class CallRecorderService : LifecycleService() {
     }
 
     private fun handleStart(intent: Intent) {
-        phoneNumber = intent.getStringExtra(Constants.EXTRA_PHONE_NUMBER) ?: ""
-        callerName  = intent.getStringExtra(Constants.EXTRA_CALLER_NAME)  ?: ""
-        isIncoming  = intent.getBooleanExtra(Constants.EXTRA_IS_INCOMING, true)
+        val newNumber = intent.getStringExtra(Constants.EXTRA_PHONE_NUMBER) ?: ""
+        val newName   = intent.getStringExtra(Constants.EXTRA_CALLER_NAME)  ?: ""
+        val newIsInc  = intent.getBooleanExtra(Constants.EXTRA_IS_INCOMING, true)
+
+        if (recorderManager.isRecording) {
+            // Second START (OFFHOOK after RINGING) — recording is already running.
+            // Just update the metadata fields with whatever info OFFHOOK gave us.
+            if (newNumber.isNotBlank()) phoneNumber = newNumber
+            if (newName.isNotBlank())   callerName  = newName
+            isIncoming = newIsInc
+            AppLogger.d(TAG, "Already recording — metadata updated: $phoneNumber / $callerName")
+            return
+        }
+
+        phoneNumber = newNumber
+        callerName  = newName
+        isIncoming  = newIsInc
         callStartMs = System.currentTimeMillis()
 
-        // Update notification with actual caller info now that we have it
+        // Update notification with caller info
         val notification = NotificationUtils.buildRecordingNotification(
             this,
             callerName.ifBlank { phoneNumber.ifBlank { "Unknown" } },
@@ -126,7 +140,7 @@ class CallRecorderService : LifecycleService() {
         if (path == null) {
             AppLogger.e(TAG, "All audio strategies failed for phone call")
             NotificationUtils.sendStatusNotification(this,
-                "Phone call recording failed — no audio source available")
+                "Phone call recording failed — mic unavailable (MIUI may be blocking audio during calls)")
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         } else {
@@ -143,6 +157,14 @@ class CallRecorderService : LifecycleService() {
         }
         val source = recorderManager.getActiveStrategyName()
         val durationMs = recorderManager.stopRecording()
+
+        // Discard very short recordings — likely a missed/rejected call with no audio
+        if (durationMs < 5_000L) {
+            AppLogger.i(TAG, "Recording too short (${durationMs}ms) — discarding")
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return
+        }
 
         serviceScope.launch {
             val sizeBytes = FileUtils.fileSize(path)
