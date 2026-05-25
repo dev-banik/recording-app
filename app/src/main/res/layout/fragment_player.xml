@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/tv_title"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceHeadlineMedium"
+        android:maxLines="2"
+        android:ellipsize="end"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Subtitle: type · date -->
+    <TextView
+        android:id="@+id/tv_subtitle"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBodyMedium"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:layout_marginTop="4dp"
+        app:layout_constraintTop_toBottomOf="@id/tv_title"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Waveform placeholder / art -->
+    <View
+        android:id="@+id/waveform_placeholder"
+        android:layout_width="0dp"
+        android:layout_height="120dp"
+        android:background="?attr/colorSurfaceVariant"
+        android:layout_marginTop="32dp"
+        app:layout_constraintTop_toBottomOf="@id/tv_subtitle"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Seek slider -->
+    <com.google.android.material.slider.Slider
+        android:id="@+id/slider"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:valueFrom="0"
+        android:valueTo="1"
+        android:value="0"
+        android:stepSize="0"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/waveform_placeholder"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Time row -->
+    <TextView
+        android:id="@+id/tv_position"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0:00"
+        android:textAppearance="?attr/textAppearanceLabelMedium"
+        app:layout_constraintTop_toBottomOf="@id/slider"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/tv_duration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="0:00"
+        android:textAppearance="?attr/textAppearanceLabelMedium"
+        app:layout_constraintTop_toBottomOf="@id/slider"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Play/Pause -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btn_play_pause"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        style="@style/Widget.Material3.Button.IconButton.Filled"
+        app:icon="@drawable/ic_play"
+        app:iconSize="36dp"
+        android:layout_marginTop="24dp"
+        app:layout_constraintTop_toBottomOf="@id/tv_position"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Speed chip -->
+    <com.google.android.material.chip.Chip
+        android:id="@+id/chip_speed"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Normal"
+        style="@style/Widget.Material3.Chip.Assist"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/btn_play_pause"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Action row -->
+    <LinearLayout
+        android:id="@+id/action_row"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="24dp"
+        app:layout_constraintTop_toBottomOf="@id/chip_speed"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_favorite"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            style="@style/Widget.Material3.Button.IconButton"
+            app:icon="@drawable/ic_star_outline"
+            android:layout_marginHorizontal="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_rename"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            style="@style/Widget.Material3.Button.IconButton"
+            app:icon="@drawable/ic_edit"
+            android:layout_marginHorizontal="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_share"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            style="@style/Widget.Material3.Button.IconButton"
+            app:icon="@drawable/ic_share"
+            android:layout_marginHorizontal="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_delete"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            style="@style/Widget.Material3.Button.IconButton"
+            app:icon="@drawable/ic_delete"
+            android:layout_marginHorizontal="8dp" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

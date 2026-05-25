@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Permissions"
+            android:textAppearance="?attr/textAppearanceHeadlineMedium"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Grant all permissions for full functionality. Some require manual setup in Android Settings."
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginBottom="20dp" />
+
+        <!-- Basic permissions card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Core Permissions"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:layout_marginBottom="12dp" />
+
+                <!-- Each row is an individual view used in PermissionsFragment -->
+                <View android:id="@+id/row_record_audio"    android:layout_width="match_parent" android:layout_height="40dp" android:tag="Microphone / Record Audio" />
+                <View android:id="@+id/row_phone_state"     android:layout_width="match_parent" android:layout_height="40dp" android:tag="Read Phone State" />
+                <View android:id="@+id/row_call_log"        android:layout_width="match_parent" android:layout_height="40dp" android:tag="Read Call Log" />
+                <View android:id="@+id/row_contacts"        android:layout_width="match_parent" android:layout_height="40dp" android:tag="Read Contacts (Caller ID)" />
+                <View android:id="@+id/row_notifications"   android:layout_width="match_parent" android:layout_height="40dp" android:tag="Post Notifications" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_grant_basic"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Grant Basic Permissions"
+                    android:layout_marginTop="8dp" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Special permissions card -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Special Permissions"
+                    android:textAppearance="?attr/textAppearanceTitleMedium"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="These must be enabled manually in Android Settings."
+                    android:textAppearance="?attr/textAppearanceBodySmall"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:layout_marginBottom="12dp" />
+
+                <View android:id="@+id/row_accessibility"   android:layout_width="match_parent" android:layout_height="40dp" android:tag="Accessibility Service (VoIP detection)" />
+                <View android:id="@+id/row_overlay"         android:layout_width="match_parent" android:layout_height="40dp" android:tag="Display Over Other Apps" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_open_accessibility"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Open Accessibility Settings"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_marginTop="8dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_open_overlay"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Allow Display Over Apps"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_marginTop="4dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_open_app_settings"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Open App Settings"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_marginTop="4dp" />
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+    </LinearLayout>
+</ScrollView>

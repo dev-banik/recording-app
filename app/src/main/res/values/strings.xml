@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Call Recorder</string>
+    <string name="accessibility_service_label">Call Monitor (Call Recorder)</string>
+    <string name="accessibility_service_description">Monitors foreground app changes to detect VoIP calls (WhatsApp, Telegram, etc.) and trigger automatic recording. No screen content is read or transmitted.</string>
+
+    <!-- Notification channels -->
+    <string name="channel_recording_name">Recording In Progress</string>
+    <string name="channel_recording_desc">Shown while a call is being recorded</string>
+    <string name="channel_alerts_name">Alerts</string>
+    <string name="channel_alerts_desc">Recording errors and storage warnings</string>
+
+    <!-- Notifications -->
+    <string name="notif_recording_title">Recording call…</string>
+    <string name="notif_voip_title">Recording VoIP call…</string>
+
+    <!-- Common -->
+    <string name="delete">Delete</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="unknown">Unknown</string>
+
+    <!-- Legal disclaimer shown on first launch -->
+    <string name="disclaimer_title">Legal Disclaimer</string>
+    <string name="disclaimer_body">This application records phone and VoIP calls for testing and research purposes only. Call recording laws vary by jurisdiction. You are solely responsible for ensuring compliance with applicable laws. This app is not intended for unauthorized recording of third parties without their consent.</string>
+    <string name="disclaimer_accept">I Understand</string>
+</resources>

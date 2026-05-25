@@ -1,0 +1,72 @@
+[versions]
+agp                 = "8.2.2"
+kotlin              = "1.9.22"
+ksp                 = "1.9.22-1.0.17"
+coreKtx             = "1.12.0"
+appcompat           = "1.7.0"
+lifecycle           = "2.7.0"
+navigation          = "2.7.6"
+room                = "2.6.1"
+hilt                = "2.50"
+hiltNavigationFrag  = "1.1.0"
+hiltWork            = "1.1.0"
+coroutines          = "1.7.3"
+material            = "1.11.0"
+constraintlayout    = "2.1.4"
+media3              = "1.2.1"
+biometric           = "1.1.0"
+datastore           = "1.0.0"
+work                = "2.9.0"
+junit               = "4.13.2"
+mockk               = "1.13.9"
+androidxTestCore    = "1.5.0"
+archTesting         = "2.2.0"
+turbine             = "1.0.0"
+
+[libraries]
+androidx-core-ktx              = { group = "androidx.core",              name = "core-ktx",                       version.ref = "coreKtx" }
+androidx-appcompat             = { group = "androidx.appcompat",         name = "appcompat",                      version.ref = "appcompat" }
+material                       = { group = "com.google.android.material", name = "material",                      version.ref = "material" }
+constraintlayout               = { group = "androidx.constraintlayout",  name = "constraintlayout",               version.ref = "constraintlayout" }
+
+lifecycle-viewmodel            = { group = "androidx.lifecycle",         name = "lifecycle-viewmodel-ktx",        version.ref = "lifecycle" }
+lifecycle-livedata             = { group = "androidx.lifecycle",         name = "lifecycle-livedata-ktx",         version.ref = "lifecycle" }
+lifecycle-runtime              = { group = "androidx.lifecycle",         name = "lifecycle-runtime-ktx",          version.ref = "lifecycle" }
+lifecycle-service              = { group = "androidx.lifecycle",         name = "lifecycle-service",              version.ref = "lifecycle" }
+
+navigation-fragment            = { group = "androidx.navigation",        name = "navigation-fragment-ktx",        version.ref = "navigation" }
+navigation-ui                  = { group = "androidx.navigation",        name = "navigation-ui-ktx",              version.ref = "navigation" }
+
+room-runtime                   = { group = "androidx.room",              name = "room-runtime",                   version.ref = "room" }
+room-compiler                  = { group = "androidx.room",              name = "room-compiler",                  version.ref = "room" }
+room-ktx                       = { group = "androidx.room",              name = "room-ktx",                       version.ref = "room" }
+
+hilt-android                   = { group = "com.google.dagger",          name = "hilt-android",                   version.ref = "hilt" }
+hilt-compiler                  = { group = "com.google.dagger",          name = "hilt-android-compiler",          version.ref = "hilt" }
+hilt-navigation-fragment       = { group = "androidx.hilt",              name = "hilt-navigation-fragment",       version.ref = "hiltNavigationFrag" }
+hilt-work                      = { group = "androidx.hilt",              name = "hilt-work",                      version.ref = "hiltWork" }
+hilt-work-compiler             = { group = "androidx.hilt",              name = "hilt-compiler",                  version.ref = "hiltWork" }
+
+coroutines-android             = { group = "org.jetbrains.kotlinx",      name = "kotlinx-coroutines-android",     version.ref = "coroutines" }
+coroutines-core                = { group = "org.jetbrains.kotlinx",      name = "kotlinx-coroutines-core",        version.ref = "coroutines" }
+
+media3-exoplayer               = { group = "androidx.media3",            name = "media3-exoplayer",               version.ref = "media3" }
+media3-ui                      = { group = "androidx.media3",            name = "media3-ui",                      version.ref = "media3" }
+
+biometric                      = { group = "androidx.biometric",         name = "biometric",                      version.ref = "biometric" }
+datastore-preferences          = { group = "androidx.datastore",         name = "datastore-preferences",          version.ref = "datastore" }
+work-runtime                   = { group = "androidx.work",              name = "work-runtime-ktx",               version.ref = "work" }
+
+junit                          = { group = "junit",                      name = "junit",                          version.ref = "junit" }
+mockk                          = { group = "io.mockk",                   name = "mockk",                          version.ref = "mockk" }
+coroutines-test                = { group = "org.jetbrains.kotlinx",      name = "kotlinx-coroutines-test",        version.ref = "coroutines" }
+androidx-test-core             = { group = "androidx.test",              name = "core",                           version.ref = "androidxTestCore" }
+arch-testing                   = { group = "androidx.arch.core",         name = "core-testing",                   version.ref = "archTesting" }
+turbine                        = { group = "app.cash.turbine",           name = "turbine",                        version.ref = "turbine" }
+
+[plugins]
+android-application    = { id = "com.android.application",                version.ref = "agp" }
+kotlin-android         = { id = "org.jetbrains.kotlin.android",            version.ref = "kotlin" }
+hilt                   = { id = "com.google.dagger.hilt.android",          version.ref = "hilt" }
+ksp                    = { id = "com.google.devtools.ksp",                 version.ref = "ksp" }
+navigation-safeargs    = { id = "androidx.navigation.safeargs.kotlin",     version.ref = "navigation" }

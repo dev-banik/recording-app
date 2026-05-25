@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- App-specific external storage — no WRITE_EXTERNAL_STORAGE needed on API 29+ -->
+    <external-files-path
+        name="recordings"
+        path="CallRecorder/" />
+    <!-- Internal storage fallback -->
+    <files-path
+        name="recordings_internal"
+        path="CallRecorder/" />
+</paths>
