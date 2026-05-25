@@ -109,7 +109,7 @@
             android:name=".service.VoipMonitorService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="microphone|mediaProjection"
+            android:foregroundServiceType="microphone|mediaProjection|phoneCall"
             android:stopWithTask="false" />
 
         <!-- ══════════════════════════════════════════

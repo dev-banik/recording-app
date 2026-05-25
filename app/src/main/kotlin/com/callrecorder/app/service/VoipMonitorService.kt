@@ -1,9 +1,13 @@
 package com.callrecorder.app.service
 
+import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.media.AudioManager
+import android.os.Build
 import android.os.IBinder
+import androidx.core.app.ServiceCompat
 import androidx.lifecycle.LifecycleService
 import com.callrecorder.app.AppLogger
 import com.callrecorder.app.domain.model.CallType
@@ -53,6 +57,7 @@ class VoipMonitorService : LifecycleService() {
         return Service.START_STICKY
     }
 
+    @SuppressLint("InlinedApi")
     private fun handleVoipStart(intent: Intent) {
         val packageName = intent.getStringExtra(Constants.EXTRA_CALL_TYPE) ?: ""
         activeCallType  = CallType.fromPackage(packageName)
@@ -62,7 +67,21 @@ class VoipMonitorService : LifecycleService() {
         val notification = NotificationUtils.buildRecordingNotification(
             this, appName, activeCallType.label
         )
-        startForeground(Constants.NOTIF_VOIP_ID, notification)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
+            try {
+                ServiceCompat.startForeground(this, Constants.NOTIF_VOIP_ID, notification, fgsType)
+            } catch (e: SecurityException) {
+                AppLogger.w(TAG, "FGS type=$fgsType denied: ${e.message}")
+                startForeground(Constants.NOTIF_VOIP_ID, notification)
+            }
+        } else {
+            startForeground(Constants.NOTIF_VOIP_ID, notification)
+        }
 
         val quality = getSharedPreferences("recorder_settings", MODE_PRIVATE)
             .getInt(Constants.PREF_RECORDING_QUALITY, 1)
@@ -74,9 +93,10 @@ class VoipMonitorService : LifecycleService() {
     private fun handleVoipStop() {
         if (!recorderManager.isRecording) { stopSelf(); return }
 
+        // Read path/source BEFORE stopRecording() clears them
+        val path   = recorderManager.getActivePath() ?: run { stopSelf(); return }
+        val source = recorderManager.getActiveStrategyName()
         val durationMs = recorderManager.stopRecording()
-        val path       = recorderManager.getActivePath() ?: run { stopSelf(); return }
-        val source     = recorderManager.getActiveStrategyName()
 
         serviceScope.launch {
             val domain = RecordingDomain(
