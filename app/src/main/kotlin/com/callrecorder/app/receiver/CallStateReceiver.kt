@@ -78,11 +78,9 @@ class CallStateReceiver : BroadcastReceiver() {
                     TelephonyManager.EXTRA_STATE_IDLE -> {
                         NotificationUtils.sendStatusNotification(context, "Call ended — saving recording…")
                         try {
-                            // Use startService (not startForegroundService) for STOP: the service
-                            // is already foreground from the START call. Using startForegroundService
-                            // here would require startForeground() to be called within 5 s, but
-                            // handleStop() may return early (nothing to stop) causing a crash.
-                            context.startService(
+                            // startForeground() is now called at the very top of onStartCommand()
+                            // before any dispatching, so the 5-second requirement is always met.
+                            context.startForegroundService(
                                 Intent(context, CallRecorderService::class.java).apply {
                                     action = Constants.ACTION_STOP_RECORDING
                                 }

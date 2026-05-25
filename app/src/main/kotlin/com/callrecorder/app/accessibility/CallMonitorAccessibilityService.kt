@@ -130,10 +130,9 @@ class CallMonitorAccessibilityService : AccessibilityService() {
         AppLogger.i(TAG, "VoIP call ended — stopping recorder")
         NotificationUtils.sendStatusNotification(this, "VoIP call ended — saving recording…")
         try {
-            // startService (not startForegroundService) for STOP: the service is already
-            // foreground. startForegroundService would require startForeground() within 5 s
-            // but handleVoipStop() may return early (nothing to stop) causing a crash.
-            startService(
+            // startForeground() is called at the top of VoipMonitorService.onStartCommand()
+            // before dispatching, so the 5-second requirement is always met for STOP too.
+            startForegroundService(
                 Intent(this, VoipMonitorService::class.java).apply {
                     action = Constants.ACTION_STOP_VOIP
                 }

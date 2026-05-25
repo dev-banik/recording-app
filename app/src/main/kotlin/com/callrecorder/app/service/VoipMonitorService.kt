@@ -1,10 +1,10 @@
 package com.callrecorder.app.service
 
 import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
-import android.media.AudioManager
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.ServiceCompat
@@ -24,13 +24,9 @@ import javax.inject.Inject
 /**
  * Foreground service that records VoIP calls (WhatsApp, Telegram, etc.).
  *
- * Detection is driven by [CallMonitorAccessibilityService] which monitors
- * foreground app changes and audio mode transitions.
- *
- * Recording strategy priority:
- *  1. AudioPlaybackCapture (Android 10+, if MediaProjection granted)
- *  2. VOICE_COMMUNICATION audio source (captures mic; some ROMs do both)
- *  3. MIC fallback
+ * startForeground() is called at the very top of onStartCommand() before any
+ * dispatching — same pattern as CallRecorderService — to guarantee the
+ * 5-second Android requirement is always met.
  */
 @AndroidEntryPoint
 class VoipMonitorService : LifecycleService() {
@@ -42,7 +38,7 @@ class VoipMonitorService : LifecycleService() {
 
     private var activeCallType  = CallType.VOIP
     private var callStartMs     = 0L
-    private var pendingStartJob: kotlinx.coroutines.Job? = null
+    private var pendingStartJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -51,57 +47,71 @@ class VoipMonitorService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+
+        // Call startForeground() unconditionally first — satisfies Android's 5-second
+        // requirement even if handleVoipStop() returns early (nothing to stop).
+        val notification = NotificationUtils.buildRecordingNotification(
+            this, "VoIP Call", activeCallType.label
+        )
+        startForegroundCompat(Constants.NOTIF_VOIP_ID, notification)
+
         when (intent?.action) {
             Constants.ACTION_START_VOIP -> handleVoipStart(intent)
             Constants.ACTION_STOP_VOIP  -> handleVoipStop()
+            else -> { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() }
         }
-        return Service.START_STICKY
+        return Service.START_NOT_STICKY
     }
 
     @SuppressLint("InlinedApi")
+    private fun startForegroundCompat(notifId: Int, notification: Notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            try {
+                ServiceCompat.startForeground(this, notifId, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL)
+                return
+            } catch (e: SecurityException) {
+                AppLogger.w(TAG, "PHONE_CALL FGS denied: ${e.message}")
+            }
+            try {
+                ServiceCompat.startForeground(this, notifId, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+                return
+            } catch (e: SecurityException) {
+                AppLogger.w(TAG, "MICROPHONE FGS denied: ${e.message}")
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                ServiceCompat.startForeground(this, notifId, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+                return
+            } catch (e: SecurityException) {
+                AppLogger.w(TAG, "MICROPHONE FGS denied: ${e.message}")
+            }
+        }
+        startForeground(notifId, notification)
+    }
+
     private fun handleVoipStart(intent: Intent) {
         val packageName = intent.getStringExtra(Constants.EXTRA_CALL_TYPE) ?: ""
         activeCallType  = CallType.fromPackage(packageName)
         callStartMs     = System.currentTimeMillis()
 
         val appName = Constants.VOIP_PACKAGES[packageName] ?: "VoIP"
+
+        // Update notification with actual app name
         val notification = NotificationUtils.buildRecordingNotification(
             this, appName, activeCallType.label
         )
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
-            } else {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            }
-            try {
-                ServiceCompat.startForeground(this, Constants.NOTIF_VOIP_ID, notification, fgsType)
-            } catch (e: SecurityException) {
-                AppLogger.w(TAG, "FGS type=$fgsType denied, trying MICROPHONE fallback: ${e.message}")
-                try {
-                    ServiceCompat.startForeground(
-                        this, Constants.NOTIF_VOIP_ID, notification,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                    )
-                } catch (e2: SecurityException) {
-                    AppLogger.e(TAG, "All FGS types denied: ${e2.message}")
-                    NotificationUtils.sendStatusNotification(this, "VoIP recording blocked — check permissions")
-                    stopSelf()
-                    return
-                }
-            }
-        } else {
-            startForeground(Constants.NOTIF_VOIP_ID, notification)
-        }
+        startForegroundCompat(Constants.NOTIF_VOIP_ID, notification)
 
         val quality = getSharedPreferences("recorder_settings", MODE_PRIVATE)
             .getInt(Constants.PREF_RECORDING_QUALITY, 1)
 
-        // Delay 1.5 s so WhatsApp's audio pipeline is fully established before we
-        // open a competing audio source. Starting immediately races with WhatsApp's
-        // own VOICE_COMMUNICATION setup and causes mutual silence.
+        // Delay 1.5 s so the VoIP app's audio pipeline is fully established
+        // before we open any audio source alongside it.
         pendingStartJob = serviceScope.launch {
-            kotlinx.coroutines.delay(1500)
+            delay(1500)
             val path = recorderManager.startRecording(activeCallType, quality)
             if (path != null) {
                 AppLogger.i(TAG, "VoIP recording started for $appName → $path")
@@ -109,21 +119,26 @@ class VoipMonitorService : LifecycleService() {
                 AppLogger.e(TAG, "All VoIP audio strategies failed for $appName")
                 NotificationUtils.sendStatusNotification(
                     this@VoipMonitorService,
-                    "VoIP recording failed — no compatible audio source found"
+                    "VoIP recording failed — no compatible audio source"
                 )
             }
         }
     }
 
     private fun handleVoipStop() {
-        // Cancel a pending delayed start (call ended before 1.5 s delay fired)
         pendingStartJob?.cancel()
         pendingStartJob = null
 
-        if (!recorderManager.isRecording) { stopSelf(); return }
+        if (!recorderManager.isRecording) {
+            AppLogger.w(TAG, "handleVoipStop: no active recording")
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return
+        }
 
-        // Read path/source BEFORE stopRecording() clears them
-        val path   = recorderManager.getActivePath() ?: run { stopSelf(); return }
+        val path   = recorderManager.getActivePath() ?: run {
+            stopForeground(STOP_FOREGROUND_REMOVE); stopSelf(); return
+        }
         val source = recorderManager.getActiveStrategyName()
         val durationMs = recorderManager.stopRecording()
 
@@ -144,7 +159,7 @@ class VoipMonitorService : LifecycleService() {
                 recordingSource = source,
             )
             repository.insert(domain)
-            AppLogger.i(TAG, "VoIP recording saved: $path")
+            AppLogger.i(TAG, "VoIP recording saved: $path (source=$source)")
         }
 
         stopForeground(STOP_FOREGROUND_REMOVE)

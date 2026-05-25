@@ -1,6 +1,7 @@
 package com.callrecorder.app.service
 
 import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
@@ -25,8 +26,13 @@ import javax.inject.Inject
  * Foreground service that records GSM / CDMA phone calls.
  *
  * Lifecycle:
- *  ACTION_START_RECORDING → starts foreground + recording
+ *  ACTION_START_RECORDING → starts recording
  *  ACTION_STOP_RECORDING  → stops recording, saves metadata, stops service
+ *
+ * startForeground() is called at the very top of onStartCommand() before any
+ * dispatching. This guarantees Android's 5-second requirement is always met,
+ * even when handleStop() returns early (nothing to stop) or handleStart()
+ * fails to find a working audio source.
  */
 @AndroidEntryPoint
 class CallRecorderService : LifecycleService() {
@@ -49,52 +55,67 @@ class CallRecorderService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+
+        // Call startForeground() unconditionally here — before any early returns in
+        // handleStart()/handleStop(). This satisfies Android's 5-second requirement
+        // regardless of what the intent action is or what happens next.
+        val notification = NotificationUtils.buildRecordingNotification(
+            this,
+            callerName.ifBlank { phoneNumber.ifBlank { "Phone Call" } },
+            CallType.PHONE.label
+        )
+        startForegroundCompat(Constants.NOTIF_RECORDING_ID, notification)
+
         when (intent?.action) {
             Constants.ACTION_START_RECORDING -> handleStart(intent)
             Constants.ACTION_STOP_RECORDING  -> handleStop()
+            else -> { stopForeground(STOP_FOREGROUND_REMOVE); stopSelf() }
         }
-        return Service.START_STICKY
+        return Service.START_NOT_STICKY
     }
 
     @SuppressLint("InlinedApi")
+    private fun startForegroundCompat(notifId: Int, notification: Notification) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            try {
+                ServiceCompat.startForeground(this, notifId, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL)
+                return
+            } catch (e: SecurityException) {
+                AppLogger.w(TAG, "PHONE_CALL FGS denied: ${e.message}")
+            }
+            try {
+                ServiceCompat.startForeground(this, notifId, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+                return
+            } catch (e: SecurityException) {
+                AppLogger.w(TAG, "MICROPHONE FGS denied: ${e.message}")
+            }
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            try {
+                ServiceCompat.startForeground(this, notifId, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+                return
+            } catch (e: SecurityException) {
+                AppLogger.w(TAG, "MICROPHONE FGS denied: ${e.message}")
+            }
+        }
+        startForeground(notifId, notification)
+    }
+
     private fun handleStart(intent: Intent) {
         phoneNumber = intent.getStringExtra(Constants.EXTRA_PHONE_NUMBER) ?: ""
         callerName  = intent.getStringExtra(Constants.EXTRA_CALLER_NAME)  ?: ""
         isIncoming  = intent.getBooleanExtra(Constants.EXTRA_IS_INCOMING, true)
         callStartMs = System.currentTimeMillis()
 
+        // Update notification with actual caller info now that we have it
         val notification = NotificationUtils.buildRecordingNotification(
             this,
             callerName.ifBlank { phoneNumber.ifBlank { "Unknown" } },
             CallType.PHONE.label
         )
-
-        // Android 14+: PHONE_CALL type is allowed from background when a call is active.
-        // API 30-33: MICROPHONE type has no background-start restrictions.
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
-            } else {
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-            }
-            try {
-                ServiceCompat.startForeground(this, Constants.NOTIF_RECORDING_ID, notification, fgsType)
-            } catch (e: SecurityException) {
-                AppLogger.w(TAG, "FGS type=$fgsType denied, trying MICROPHONE fallback: ${e.message}")
-                try {
-                    ServiceCompat.startForeground(
-                        this, Constants.NOTIF_RECORDING_ID, notification,
-                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                    )
-                } catch (e2: SecurityException) {
-                    AppLogger.e(TAG, "All FGS types denied: ${e2.message}")
-                    stopSelf()
-                    return
-                }
-            }
-        } else {
-            startForeground(Constants.NOTIF_RECORDING_ID, notification)
-        }
+        startForegroundCompat(Constants.NOTIF_RECORDING_ID, notification)
 
         acquireWakeLock()
 
@@ -103,14 +124,23 @@ class CallRecorderService : LifecycleService() {
 
         val path = recorderManager.startRecording(CallType.PHONE, quality)
         if (path == null) {
-            AppLogger.e(TAG, "Failed to start recording — stopping service")
+            AppLogger.e(TAG, "All audio strategies failed for phone call")
+            NotificationUtils.sendStatusNotification(this,
+                "Phone call recording failed — no audio source available")
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
+        } else {
+            AppLogger.i(TAG, "Phone call recording started → $path")
         }
     }
 
     private fun handleStop() {
-        // Read path/source BEFORE stopRecording() clears them
-        val path   = recorderManager.getActivePath() ?: run { stopSelf(); return }
+        val path   = recorderManager.getActivePath() ?: run {
+            AppLogger.w(TAG, "handleStop: no active recording")
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            stopSelf()
+            return
+        }
         val source = recorderManager.getActiveStrategyName()
         val durationMs = recorderManager.stopRecording()
 
@@ -132,7 +162,11 @@ class CallRecorderService : LifecycleService() {
                 recordingSource = source,
             )
             repository.insert(domain)
-            AppLogger.i(TAG, "Saved recording: $path (${durationMs}ms, ${sizeBytes}B)")
+            AppLogger.i(TAG, "Saved phone recording: $path (${durationMs}ms, source=$source)")
+            NotificationUtils.sendStatusNotification(
+                this@CallRecorderService,
+                "Call saved ✓  source: $source  (${durationMs / 1000}s)"
+            )
         }
 
         releaseWakeLock()
@@ -157,7 +191,7 @@ class CallRecorderService : LifecycleService() {
         wakeLock = pm.newWakeLock(
             PowerManager.PARTIAL_WAKE_LOCK,
             "$TAG::RecordingWakeLock"
-        ).apply { acquire(60 * 60 * 1000L /* 1 hour max */) }
+        ).apply { acquire(60 * 60 * 1000L) }
     }
 
     private fun releaseWakeLock() {

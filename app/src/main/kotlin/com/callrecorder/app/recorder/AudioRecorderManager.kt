@@ -102,12 +102,16 @@ class AudioRecorderManager @Inject constructor(
         }
 
     private fun phoneStrategies(): List<RecordingStrategy> = buildList {
+        // MediaRecorder-based (captures call audio on most manufacturer ROMs)
         add(MediaRecorderStrategy.voiceCall())
         add(MediaRecorderStrategy.voiceDownlink())
         add(MediaRecorderStrategy.voiceUplink())
         add(MediaRecorderStrategy.voiceCommunication())
         add(MediaRecorderStrategy.voiceRecognition())
         add(MediaRecorderStrategy.unprocessed())
+        // AudioRecord-based (lower-level path, sometimes bypasses ROM call-recording blocks)
+        add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_RECOGNITION))
+        add(MicrophoneStrategy(MediaRecorder.AudioSource.UNPROCESSED))
         add(MicrophoneStrategy())
     }
 
