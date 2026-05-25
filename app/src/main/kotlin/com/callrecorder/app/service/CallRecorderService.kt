@@ -80,8 +80,17 @@ class CallRecorderService : LifecycleService() {
             try {
                 ServiceCompat.startForeground(this, Constants.NOTIF_RECORDING_ID, notification, fgsType)
             } catch (e: SecurityException) {
-                AppLogger.w(TAG, "FGS type=$fgsType denied, using basic startForeground: ${e.message}")
-                startForeground(Constants.NOTIF_RECORDING_ID, notification)
+                AppLogger.w(TAG, "FGS type=$fgsType denied, trying MICROPHONE fallback: ${e.message}")
+                try {
+                    ServiceCompat.startForeground(
+                        this, Constants.NOTIF_RECORDING_ID, notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                    )
+                } catch (e2: SecurityException) {
+                    AppLogger.e(TAG, "All FGS types denied: ${e2.message}")
+                    stopSelf()
+                    return
+                }
             }
         } else {
             startForeground(Constants.NOTIF_RECORDING_ID, notification)

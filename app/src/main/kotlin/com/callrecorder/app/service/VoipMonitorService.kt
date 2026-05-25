@@ -76,8 +76,18 @@ class VoipMonitorService : LifecycleService() {
             try {
                 ServiceCompat.startForeground(this, Constants.NOTIF_VOIP_ID, notification, fgsType)
             } catch (e: SecurityException) {
-                AppLogger.w(TAG, "FGS type=$fgsType denied: ${e.message}")
-                startForeground(Constants.NOTIF_VOIP_ID, notification)
+                AppLogger.w(TAG, "FGS type=$fgsType denied, trying MICROPHONE fallback: ${e.message}")
+                try {
+                    ServiceCompat.startForeground(
+                        this, Constants.NOTIF_VOIP_ID, notification,
+                        ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                    )
+                } catch (e2: SecurityException) {
+                    AppLogger.e(TAG, "All FGS types denied: ${e2.message}")
+                    NotificationUtils.sendStatusNotification(this, "VoIP recording blocked — check permissions")
+                    stopSelf()
+                    return
+                }
             }
         } else {
             startForeground(Constants.NOTIF_VOIP_ID, notification)
