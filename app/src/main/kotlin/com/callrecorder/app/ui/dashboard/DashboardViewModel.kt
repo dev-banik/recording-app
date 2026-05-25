@@ -1,5 +1,7 @@
 package com.callrecorder.app.ui.dashboard
 
+import android.content.Context
+import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.callrecorder.app.domain.model.CallType
@@ -8,6 +10,7 @@ import com.callrecorder.app.domain.repository.RecordingRepository
 import com.callrecorder.app.recorder.AudioRecorderManager
 import com.callrecorder.app.util.FileUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,10 +27,11 @@ data class DashboardUiState(
 class DashboardViewModel @Inject constructor(
     private val repository: RecordingRepository,
     private val recorderManager: AudioRecorderManager,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
     private val _testRecording = MutableStateFlow(false)
-    private val _statusMessage = MutableStateFlow("Monitoring active")
+    private val _statusMessage = MutableStateFlow(buildStatusMessage())
 
     val uiState: StateFlow<DashboardUiState> = combine(
         repository.getTotalCount(),
@@ -44,6 +48,27 @@ class DashboardViewModel @Inject constructor(
             statusMessage    = status,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DashboardUiState())
+
+    fun refreshStatus() {
+        if (!_testRecording.value) _statusMessage.value = buildStatusMessage()
+    }
+
+    private fun buildStatusMessage(): String {
+        val a11yEnabled = isAccessibilityServiceEnabled()
+        return if (a11yEnabled) {
+            "Monitoring active  |  VoIP detection: ON"
+        } else {
+            "Phone calls: ON  |  WhatsApp/VoIP: OFF\n-> Enable in Settings > Accessibility > Call Recorder"
+        }
+    }
+
+    private fun isAccessibilityServiceEnabled(): Boolean {
+        val flat = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        return flat.split(":").any { it.contains(context.packageName, ignoreCase = true) }
+    }
 
     fun toggleTestRecording() {
         if (recorderManager.isRecording) {

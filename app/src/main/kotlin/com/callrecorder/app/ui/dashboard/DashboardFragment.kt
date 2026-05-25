@@ -35,6 +35,11 @@ class DashboardFragment : Fragment() {
         observeState()
     }
 
+    override fun onResume() {
+        super.onResume()
+        viewModel.refreshStatus()
+    }
+
     private fun observeState() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
