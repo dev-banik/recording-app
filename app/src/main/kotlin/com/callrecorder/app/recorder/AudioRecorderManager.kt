@@ -115,16 +115,17 @@ class AudioRecorderManager @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             playbackCaptureStrategy?.let { add(it) }
         }
-        // VOICE_CALL captures both sides on many manufacturer ROMs (incl. MIUI)
-        add(MediaRecorderStrategy.voiceCall())
-        // VOICE_RECOGNITION uses the mic without conflicting with VOICE_COMMUNICATION
-        add(MediaRecorderStrategy.voiceRecognition())
-        // UNPROCESSED = raw ADC mic, coexists with communication sessions
-        add(MediaRecorderStrategy.unprocessed())
-        // Last resort: AudioRecord with MIC
-        add(MicrophoneStrategy())
-        // NOTE: voiceCommunication() intentionally excluded — it shares the same
-        // hardware audio path as WhatsApp/VoIP apps and causes mutual silence.
+        // MediaRecorder-based (higher-level, MIUI may restrict these during VoIP)
+        add(MediaRecorderStrategy.voiceCall())         // both sides on many ROMs
+        add(MediaRecorderStrategy.voiceRecognition())  // mic, avoids communication path
+        add(MediaRecorderStrategy.unprocessed())       // raw ADC mic
+
+        // AudioRecord-based (lower-level, sometimes bypasses ROM call-recording blocks)
+        add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_RECOGNITION))
+        add(MicrophoneStrategy(MediaRecorder.AudioSource.UNPROCESSED))
+        add(MicrophoneStrategy())  // raw MIC via AudioRecord, last resort
+
+        // NOTE: voiceCommunication() excluded — shares WhatsApp's audio path, causes mutual silence.
     }
 
     companion object {

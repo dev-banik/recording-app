@@ -12,17 +12,19 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 /**
- * Fallback strategy — records microphone audio only.
+ * Records via AudioRecord — lower-level than MediaRecorder, sometimes bypasses
+ * ROM-level restrictions on mic access during calls.
  *
- * Captures the device microphone (your voice side + ambient speaker
- * bleed when loudspeaker is on). Always supported and never restricted
- * but only captures one side of a call unless speaker mode is active.
+ * [audioSource] defaults to MIC but can be VOICE_RECOGNITION (bypasses call
+ * recording blocks on some ROMs), UNPROCESSED (raw ADC), etc.
  *
  * Writes a WAV file so no encoder dependency is needed.
  */
-class MicrophoneStrategy : RecordingStrategy {
+class MicrophoneStrategy(
+    private val audioSource: Int = MediaRecorder.AudioSource.MIC
+) : RecordingStrategy {
 
-    override val name = "Microphone(MIC)"
+    override val name = "AudioRecord(source=$audioSource)"
     override val minApiLevel = 26
     override var isRecording = false
         private set
@@ -45,7 +47,7 @@ class MicrophoneStrategy : RecordingStrategy {
         val bufferSize = maxOf(minBuffer, 4096)
 
         val audioRecord = AudioRecord(
-            MediaRecorder.AudioSource.MIC,
+            audioSource,
             sampleRate, channelConfig, encoding, bufferSize
         )
 
