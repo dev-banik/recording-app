@@ -8,6 +8,7 @@ import android.view.accessibility.AccessibilityEvent
 import com.callrecorder.app.AppLogger
 import com.callrecorder.app.service.VoipMonitorService
 import com.callrecorder.app.util.Constants
+import com.callrecorder.app.util.NotificationUtils
 
 /**
  * Accessibility service for VoIP call detection.
@@ -59,13 +60,20 @@ class CallMonitorAccessibilityService : AccessibilityService() {
 
     private fun startVoipRecording(packageName: String) {
         isVoipCallActive = true
+        val appName = Constants.VOIP_PACKAGES[packageName] ?: packageName
         AppLogger.i(TAG, "VoIP call detected: $packageName — starting recording")
-        startForegroundService(
-            Intent(this, VoipMonitorService::class.java).apply {
-                action = Constants.ACTION_START_VOIP
-                putExtra(Constants.EXTRA_CALL_TYPE, packageName)
-            }
-        )
+        NotificationUtils.sendStatusNotification(this, "$appName call detected — starting recorder…")
+        try {
+            startForegroundService(
+                Intent(this, VoipMonitorService::class.java).apply {
+                    action = Constants.ACTION_START_VOIP
+                    putExtra(Constants.EXTRA_CALL_TYPE, packageName)
+                }
+            )
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to start VoIP recorder: ${e.message}")
+            NotificationUtils.sendStatusNotification(this, "VoIP recorder failed to start: ${e.message}")
+        }
     }
 
     private fun maybeStopVoipRecording() {
@@ -73,11 +81,16 @@ class CallMonitorAccessibilityService : AccessibilityService() {
         isVoipCallActive = false
         currentVoipPackage = null
         AppLogger.i(TAG, "VoIP call ended — stopping recording")
-        startForegroundService(
-            Intent(this, VoipMonitorService::class.java).apply {
-                action = Constants.ACTION_STOP_VOIP
-            }
-        )
+        NotificationUtils.sendStatusNotification(this, "VoIP call ended — saving recording…")
+        try {
+            startForegroundService(
+                Intent(this, VoipMonitorService::class.java).apply {
+                    action = Constants.ACTION_STOP_VOIP
+                }
+            )
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to stop VoIP recorder: ${e.message}")
+        }
     }
 
     override fun onInterrupt() {
