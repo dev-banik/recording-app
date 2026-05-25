@@ -51,22 +51,30 @@ class CallStateReceiver : BroadcastReceiver() {
                         val prefs = context.getSharedPreferences("recorder_settings", Context.MODE_PRIVATE)
                         if (!prefs.getBoolean(Constants.PREF_AUTO_RECORD, true)) return
 
-                        context.startForegroundService(
-                            Intent(context, CallRecorderService::class.java).apply {
-                                action = Constants.ACTION_START_RECORDING
-                                putExtra(Constants.EXTRA_PHONE_NUMBER, phoneNumber)
-                                putExtra(Constants.EXTRA_CALLER_NAME, name)
-                                putExtra(Constants.EXTRA_IS_INCOMING, isIncoming)
-                            }
-                        )
+                        try {
+                            context.startForegroundService(
+                                Intent(context, CallRecorderService::class.java).apply {
+                                    action = Constants.ACTION_START_RECORDING
+                                    putExtra(Constants.EXTRA_PHONE_NUMBER, phoneNumber)
+                                    putExtra(Constants.EXTRA_CALLER_NAME, name)
+                                    putExtra(Constants.EXTRA_IS_INCOMING, isIncoming)
+                                }
+                            )
+                        } catch (e: Exception) {
+                            AppLogger.e(TAG, "Failed to start recorder service: ${e.message}")
+                        }
                     }
 
                     TelephonyManager.EXTRA_STATE_IDLE -> {
-                        context.startForegroundService(
-                            Intent(context, CallRecorderService::class.java).apply {
-                                action = Constants.ACTION_STOP_RECORDING
-                            }
-                        )
+                        try {
+                            context.startForegroundService(
+                                Intent(context, CallRecorderService::class.java).apply {
+                                    action = Constants.ACTION_STOP_RECORDING
+                                }
+                            )
+                        } catch (e: Exception) {
+                            AppLogger.e(TAG, "Failed to stop recorder service: ${e.message}")
+                        }
                         pendingIncomingNumber = ""
                         pendingOutgoingNumber = ""
                         isIncoming = true

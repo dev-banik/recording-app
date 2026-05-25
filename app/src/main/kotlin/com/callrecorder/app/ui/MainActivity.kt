@@ -76,7 +76,9 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         setupNavigation()
         permissionLauncher.launch(requiredPermissions)
-        requestMediaProjectionIfNeeded()
+        if (savedInstanceState == null) {
+            requestMediaProjectionIfNeeded()
+        }
     }
 
     private fun setupNavigation() {

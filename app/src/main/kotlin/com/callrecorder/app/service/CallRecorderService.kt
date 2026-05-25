@@ -1,9 +1,13 @@
 package com.callrecorder.app.service
 
+import android.annotation.SuppressLint
 import android.app.Service
 import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import androidx.core.app.ServiceCompat
 import androidx.lifecycle.LifecycleService
 import com.callrecorder.app.AppLogger
 import com.callrecorder.app.domain.model.CallType
@@ -52,6 +56,7 @@ class CallRecorderService : LifecycleService() {
         return Service.START_STICKY
     }
 
+    @SuppressLint("InlinedApi")
     private fun handleStart(intent: Intent) {
         phoneNumber = intent.getStringExtra(Constants.EXTRA_PHONE_NUMBER) ?: ""
         callerName  = intent.getStringExtra(Constants.EXTRA_CALLER_NAME)  ?: ""
@@ -63,7 +68,25 @@ class CallRecorderService : LifecycleService() {
             callerName.ifBlank { phoneNumber.ifBlank { "Unknown" } },
             CallType.PHONE.label
         )
-        startForeground(Constants.NOTIF_RECORDING_ID, notification)
+
+        // Android 14+: PHONE_CALL type is allowed from background when a call is active.
+        // API 30-33: MICROPHONE type has no background-start restrictions.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val fgsType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
+            try {
+                ServiceCompat.startForeground(this, Constants.NOTIF_RECORDING_ID, notification, fgsType)
+            } catch (e: SecurityException) {
+                AppLogger.w(TAG, "FGS type=$fgsType denied, using basic startForeground: ${e.message}")
+                startForeground(Constants.NOTIF_RECORDING_ID, notification)
+            }
+        } else {
+            startForeground(Constants.NOTIF_RECORDING_ID, notification)
+        }
+
         acquireWakeLock()
 
         val quality = getSharedPreferences("recorder_settings", MODE_PRIVATE)
