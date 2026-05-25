@@ -79,7 +79,7 @@ class PlayerFragment : Fragment() {
         binding.chipSpeed.setOnClickListener {
             val speeds = floatArrayOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
             val labels = speeds.map { if (it == 1.0f) "Normal" else "${it}x" }.toTypedArray()
-            val current = speeds.indexOf(viewModel.uiState.value.speed).coerceAtLeast(0)
+            val current = speeds.indexOfFirst { it == viewModel.uiState.value.speed }.coerceAtLeast(0)
             MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Playback Speed")
                 .setSingleChoiceItems(labels, current) { dialog, idx ->
