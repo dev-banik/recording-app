@@ -40,8 +40,9 @@ class VoipMonitorService : LifecycleService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    private var activeCallType = CallType.VOIP
-    private var callStartMs    = 0L
+    private var activeCallType  = CallType.VOIP
+    private var callStartMs     = 0L
+    private var pendingStartJob: kotlinx.coroutines.Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -96,11 +97,29 @@ class VoipMonitorService : LifecycleService() {
         val quality = getSharedPreferences("recorder_settings", MODE_PRIVATE)
             .getInt(Constants.PREF_RECORDING_QUALITY, 1)
 
-        recorderManager.startRecording(activeCallType, quality)
-        AppLogger.i(TAG, "VoIP recording started for $appName")
+        // Delay 1.5 s so WhatsApp's audio pipeline is fully established before we
+        // open a competing audio source. Starting immediately races with WhatsApp's
+        // own VOICE_COMMUNICATION setup and causes mutual silence.
+        pendingStartJob = serviceScope.launch {
+            kotlinx.coroutines.delay(1500)
+            val path = recorderManager.startRecording(activeCallType, quality)
+            if (path != null) {
+                AppLogger.i(TAG, "VoIP recording started for $appName → $path")
+            } else {
+                AppLogger.e(TAG, "All VoIP audio strategies failed for $appName")
+                NotificationUtils.sendStatusNotification(
+                    this@VoipMonitorService,
+                    "VoIP recording failed — no compatible audio source found"
+                )
+            }
+        }
     }
 
     private fun handleVoipStop() {
+        // Cancel a pending delayed start (call ended before 1.5 s delay fired)
+        pendingStartJob?.cancel()
+        pendingStartJob = null
+
         if (!recorderManager.isRecording) { stopSelf(); return }
 
         // Read path/source BEFORE stopRecording() clears them

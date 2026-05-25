@@ -115,8 +115,16 @@ class AudioRecorderManager @Inject constructor(
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             playbackCaptureStrategy?.let { add(it) }
         }
-        add(MediaRecorderStrategy.voiceCommunication())
+        // VOICE_CALL captures both sides on many manufacturer ROMs (incl. MIUI)
+        add(MediaRecorderStrategy.voiceCall())
+        // VOICE_RECOGNITION uses the mic without conflicting with VOICE_COMMUNICATION
+        add(MediaRecorderStrategy.voiceRecognition())
+        // UNPROCESSED = raw ADC mic, coexists with communication sessions
+        add(MediaRecorderStrategy.unprocessed())
+        // Last resort: AudioRecord with MIC
         add(MicrophoneStrategy())
+        // NOTE: voiceCommunication() intentionally excluded — it shares the same
+        // hardware audio path as WhatsApp/VoIP apps and causes mutual silence.
     }
 
     companion object {
