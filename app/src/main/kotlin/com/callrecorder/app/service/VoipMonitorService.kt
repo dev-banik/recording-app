@@ -13,6 +13,7 @@ import com.callrecorder.app.AppLogger
 import com.callrecorder.app.domain.model.CallType
 import com.callrecorder.app.domain.model.RecordingDomain
 import com.callrecorder.app.domain.repository.RecordingRepository
+import com.callrecorder.app.notification.CallerNameCache
 import com.callrecorder.app.recorder.AudioRecorderManager
 import com.callrecorder.app.util.Constants
 import com.callrecorder.app.util.FileUtils
@@ -36,10 +37,11 @@ class VoipMonitorService : LifecycleService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
-    private var activeCallType  = CallType.VOIP
-    private var callerName      = ""
-    private var phoneNumber     = ""
-    private var callStartMs     = 0L
+    private var activeCallType    = CallType.VOIP
+    private var activePackageName = ""
+    private var callerName        = ""
+    private var phoneNumber       = ""
+    private var callStartMs       = 0L
     private var pendingStartJob: Job? = null
 
     override fun onCreate() {
@@ -96,7 +98,8 @@ class VoipMonitorService : LifecycleService() {
 
     private fun handleVoipStart(intent: Intent) {
         val packageName = intent.getStringExtra(Constants.EXTRA_CALL_TYPE) ?: ""
-        activeCallType  = CallType.fromPackage(packageName)
+        activePackageName = packageName
+        activeCallType    = CallType.fromPackage(packageName)
         callerName      = intent.getStringExtra(Constants.EXTRA_CALLER_NAME) ?: ""
         phoneNumber     = intent.getStringExtra(Constants.EXTRA_PHONE_NUMBER) ?: ""
         callStartMs     = System.currentTimeMillis()
@@ -143,12 +146,13 @@ class VoipMonitorService : LifecycleService() {
         val durationMs = recorderManager.stopRecording()
 
         serviceScope.launch {
+            val cached = CallerNameCache.get(activePackageName)
             val domain = RecordingDomain(
                 id              = 0,
                 filePath        = path,
                 fileName        = FileUtils.fileName(path),
-                callerName      = callerName,
-                phoneNumber     = phoneNumber,
+                callerName      = callerName.ifBlank  { cached.name },
+                phoneNumber     = phoneNumber.ifBlank { cached.number },
                 callType        = activeCallType,
                 isIncoming      = true,
                 timestamp       = callStartMs,

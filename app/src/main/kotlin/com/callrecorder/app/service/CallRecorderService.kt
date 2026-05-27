@@ -15,6 +15,7 @@ import com.callrecorder.app.AppLogger
 import com.callrecorder.app.domain.model.CallType
 import com.callrecorder.app.domain.model.RecordingDomain
 import com.callrecorder.app.domain.repository.RecordingRepository
+import com.callrecorder.app.notification.CallerNameCache
 import com.callrecorder.app.recorder.AudioRecorderManager
 import com.callrecorder.app.util.Constants
 import com.callrecorder.app.util.FileUtils
@@ -168,13 +169,17 @@ class CallRecorderService : LifecycleService() {
         }
 
         serviceScope.launch {
+            // Re-check the notification cache one final time — the dialer notification
+            // often arrives AFTER the RINGING handler ran, so this is the last chance
+            // to pick up a name/number that appeared during the call.
+            val cached = CallerNameCache.get(CallerNameCache.PHONE_CALL_PKG)
             val sizeBytes = FileUtils.fileSize(path)
             val domain = RecordingDomain(
                 id              = 0,
                 filePath        = path,
                 fileName        = FileUtils.fileName(path),
-                callerName      = callerName,
-                phoneNumber     = phoneNumber,
+                callerName      = callerName.ifBlank  { cached.name },
+                phoneNumber     = phoneNumber.ifBlank { cached.number },
                 callType        = CallType.PHONE,
                 isIncoming      = isIncoming,
                 timestamp       = callStartMs,

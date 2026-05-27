@@ -51,7 +51,9 @@ object NotificationUtils {
             .setOngoing(true)
             .setContentIntent(tapIntent)
             .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            // Android 12+: don't show immediately — if the call is short, it may never appear
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_DEFERRED)
             .build()
     }
 }
