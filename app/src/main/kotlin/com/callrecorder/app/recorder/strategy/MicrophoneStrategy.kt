@@ -21,10 +21,11 @@ import java.nio.ByteOrder
  * Writes a WAV file so no encoder dependency is needed.
  */
 class MicrophoneStrategy(
-    private val audioSource: Int = MediaRecorder.AudioSource.MIC
+    private val audioSource: Int = MediaRecorder.AudioSource.MIC,
+    private val forceSampleRate: Int? = null,
 ) : RecordingStrategy {
 
-    override val name = "AudioRecord(source=$audioSource)"
+    override val name = "AudioRecord(source=$audioSource,sr=${forceSampleRate ?: "auto"})"
     override val minApiLevel = 26
     override var isRecording = false
         private set
@@ -35,7 +36,7 @@ class MicrophoneStrategy(
     override fun isSupported(): Boolean = true
 
     override fun start(outputPath: String, quality: Int): Boolean {
-        val sampleRate = if (quality >= 2) 44100 else 16000
+        val sampleRate = forceSampleRate ?: if (quality >= 2) 44100 else 16000
         val channelConfig = AudioFormat.CHANNEL_IN_MONO
         val encoding = AudioFormat.ENCODING_PCM_16BIT
 

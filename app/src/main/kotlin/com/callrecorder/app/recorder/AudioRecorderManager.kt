@@ -102,8 +102,12 @@ class AudioRecorderManager @Inject constructor(
         }
 
     private fun phoneStrategies(): List<RecordingStrategy> = buildList {
-        // AudioRecord first — lower-level than MediaRecorder, bypasses MIUI restrictions
-        // that block setAudioSource() at the MediaRecorder layer.
+        // AudioRecord at 8 kHz — phone-quality sample rate; some MIUI/OEM HALs
+        // allow VOICE_CALL source at this rate even when they block 16 kHz.
+        add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_CALL,     8_000))
+        add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_DOWNLINK, 8_000))
+        add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_UPLINK,   8_000))
+        // AudioRecord at auto sample rate (16/44 kHz based on quality setting)
         add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_CALL))
         add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_DOWNLINK))
         add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_UPLINK))
@@ -112,8 +116,8 @@ class AudioRecorderManager @Inject constructor(
         add(MediaRecorderStrategy.voiceDownlink())
         add(MediaRecorderStrategy.voiceUplink())
         add(MediaRecorderStrategy.voiceCommunication())
-        // Generic mic sources — capture your voice; with speaker mode enabled, also
-        // capture the other side via speaker bleed (see PREF_SPEAKER_RECORD).
+        // Generic mic sources — capture your voice; with speaker mode enabled,
+        // also capture the other side via speaker bleed (see PREF_SPEAKER_RECORD).
         add(MediaRecorderStrategy.voiceRecognition())
         add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_RECOGNITION))
         add(MediaRecorderStrategy.unprocessed())
