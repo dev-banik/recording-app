@@ -8,7 +8,9 @@ import javax.inject.Inject
 class GetRecordingsUseCase @Inject constructor(
     private val repository: RecordingRepository
 ) {
-    operator fun invoke(callType: String? = null): Flow<List<RecordingDomain>> =
-        if (callType.isNullOrBlank()) repository.getAllRecordings()
-        else repository.getRecordingsByType(callType)
+    operator fun invoke(callType: String? = null): Flow<List<RecordingDomain>> = when {
+        callType == "FAVORITES"   -> repository.getFavorites()
+        callType.isNullOrBlank()  -> repository.getAllRecordings()
+        else                      -> repository.getRecordingsByType(callType)
+    }
 }

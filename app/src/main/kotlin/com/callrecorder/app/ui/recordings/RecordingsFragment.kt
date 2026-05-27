@@ -60,6 +60,7 @@ class RecordingsFragment : Fragment() {
         binding.chipTelegram.setOnClickListener  { viewModel.setFilter("TELEGRAM") }
         binding.chipMessenger.setOnClickListener { viewModel.setFilter("MESSENGER") }
         binding.chipVoip.setOnClickListener      { viewModel.setFilter("VOIP") }
+        binding.chipFavorites.setOnClickListener { viewModel.setFilter("FAVORITES") }
     }
 
     private fun observeState() {
