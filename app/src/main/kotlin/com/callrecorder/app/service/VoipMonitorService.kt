@@ -38,6 +38,7 @@ class VoipMonitorService : LifecycleService() {
 
     private var activeCallType  = CallType.VOIP
     private var callerName      = ""
+    private var phoneNumber     = ""
     private var callStartMs     = 0L
     private var pendingStartJob: Job? = null
 
@@ -97,6 +98,7 @@ class VoipMonitorService : LifecycleService() {
         val packageName = intent.getStringExtra(Constants.EXTRA_CALL_TYPE) ?: ""
         activeCallType  = CallType.fromPackage(packageName)
         callerName      = intent.getStringExtra(Constants.EXTRA_CALLER_NAME) ?: ""
+        phoneNumber     = intent.getStringExtra(Constants.EXTRA_PHONE_NUMBER) ?: ""
         callStartMs     = System.currentTimeMillis()
 
         val appName = Constants.VOIP_PACKAGES[packageName] ?: "VoIP"
@@ -150,7 +152,7 @@ class VoipMonitorService : LifecycleService() {
                 filePath        = path,
                 fileName        = FileUtils.fileName(path),
                 callerName      = callerName,
-                phoneNumber     = "",
+                phoneNumber     = phoneNumber,
                 callType        = activeCallType,
                 isIncoming      = true,
                 timestamp       = callStartMs,

@@ -3,14 +3,16 @@ package com.callrecorder.app.notification
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Process-lifetime cache: maps VoIP package name → caller name extracted from
+ * Process-lifetime cache: maps VoIP package name → [CallerInfo] extracted from
  * the incoming-call notification. Written by [CallNotificationListener],
  * read by [com.callrecorder.app.accessibility.CallMonitorAccessibilityService].
  */
 object CallerNameCache {
-    private val map = ConcurrentHashMap<String, String>()
 
-    fun set(pkg: String, name: String) { map[pkg] = name }
-    fun get(pkg: String): String = map[pkg] ?: ""
-    fun clear(pkg: String) { map.remove(pkg) }
+    data class CallerInfo(val name: String, val number: String)
+
+    private val map = ConcurrentHashMap<String, CallerInfo>()
+
+    fun set(pkg: String, info: CallerInfo) { map[pkg] = info }
+    fun get(pkg: String): CallerInfo = map[pkg] ?: CallerInfo("", "")
 }

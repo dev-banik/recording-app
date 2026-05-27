@@ -108,16 +108,18 @@ class CallMonitorAccessibilityService : AccessibilityService() {
 
     private fun startVoipRecording(packageName: String) {
         isVoipCallActive = true
-        val appName    = Constants.VOIP_PACKAGES[packageName] ?: packageName
-        val callerName = CallerNameCache.get(packageName)
-        AppLogger.i(TAG, "VoIP recording starting for $appName (caller: ${callerName.ifBlank { "unknown" }})")
+        val appName = Constants.VOIP_PACKAGES[packageName] ?: packageName
+        val caller  = CallerNameCache.get(packageName)
+        AppLogger.i(TAG, "VoIP recording starting for $appName " +
+            "(name=${caller.name.ifBlank { "-" }}, number=${caller.number.ifBlank { "-" }})")
         NotificationUtils.sendStatusNotification(this, "$appName call detected — starting recorder…")
         try {
             startForegroundService(
                 Intent(this, VoipMonitorService::class.java).apply {
                     action = Constants.ACTION_START_VOIP
                     putExtra(Constants.EXTRA_CALL_TYPE, packageName)
-                    putExtra(Constants.EXTRA_CALLER_NAME, callerName)
+                    putExtra(Constants.EXTRA_CALLER_NAME, caller.name)
+                    putExtra(Constants.EXTRA_PHONE_NUMBER, caller.number)
                 }
             )
         } catch (e: Exception) {
