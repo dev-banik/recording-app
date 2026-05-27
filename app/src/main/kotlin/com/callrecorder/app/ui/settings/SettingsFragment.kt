@@ -1,10 +1,13 @@
 package com.callrecorder.app.ui.settings
 
+import android.content.Intent
 import android.os.Bundle
+import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -12,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.callrecorder.app.R
 import com.callrecorder.app.databinding.FragmentSettingsBinding
+import com.callrecorder.app.notification.CallNotificationListener
 import com.callrecorder.app.util.Constants
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
@@ -60,6 +64,10 @@ class SettingsFragment : Fragment() {
 
         binding.rowQuality.setOnClickListener { showQualityDialog() }
         binding.rowAutoDelete.setOnClickListener { showAutoDeleteDialog() }
+
+        binding.rowNotificationAccess.setOnClickListener {
+            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
     }
 
     private fun observeState() {
@@ -76,6 +84,24 @@ class SettingsFragment : Fragment() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateNotificationAccessStatus()
+    }
+
+    private fun updateNotificationAccessStatus() {
+        val granted = CallNotificationListener.isGranted(requireContext())
+        binding.tvNotificationAccessStatus.text = if (granted) "Granted" else "Tap to enable"
+        val color = if (granted)
+            com.google.android.material.R.attr.colorPrimary
+        else
+            com.google.android.material.R.attr.colorError
+        val resolvedColor = com.google.android.material.color.MaterialColors.getColor(
+            binding.tvNotificationAccessStatus, color
+        )
+        binding.tvNotificationAccessStatus.setTextColor(resolvedColor)
     }
 
     private fun showQualityDialog() {
