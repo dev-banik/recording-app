@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 import com.callrecorder.app.AppLogger
+import com.callrecorder.app.notification.CallerNameCache
 import com.callrecorder.app.service.VoipMonitorService
 import com.callrecorder.app.util.Constants
 import com.callrecorder.app.util.NotificationUtils
@@ -107,14 +108,16 @@ class CallMonitorAccessibilityService : AccessibilityService() {
 
     private fun startVoipRecording(packageName: String) {
         isVoipCallActive = true
-        val appName = Constants.VOIP_PACKAGES[packageName] ?: packageName
-        AppLogger.i(TAG, "VoIP recording starting for $appName")
+        val appName    = Constants.VOIP_PACKAGES[packageName] ?: packageName
+        val callerName = CallerNameCache.get(packageName)
+        AppLogger.i(TAG, "VoIP recording starting for $appName (caller: ${callerName.ifBlank { "unknown" }})")
         NotificationUtils.sendStatusNotification(this, "$appName call detected — starting recorder…")
         try {
             startForegroundService(
                 Intent(this, VoipMonitorService::class.java).apply {
                     action = Constants.ACTION_START_VOIP
                     putExtra(Constants.EXTRA_CALL_TYPE, packageName)
+                    putExtra(Constants.EXTRA_CALLER_NAME, callerName)
                 }
             )
         } catch (e: Exception) {

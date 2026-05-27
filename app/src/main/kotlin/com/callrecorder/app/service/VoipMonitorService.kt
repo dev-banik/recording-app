@@ -37,6 +37,7 @@ class VoipMonitorService : LifecycleService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private var activeCallType  = CallType.VOIP
+    private var callerName      = ""
     private var callStartMs     = 0L
     private var pendingStartJob: Job? = null
 
@@ -95,6 +96,7 @@ class VoipMonitorService : LifecycleService() {
     private fun handleVoipStart(intent: Intent) {
         val packageName = intent.getStringExtra(Constants.EXTRA_CALL_TYPE) ?: ""
         activeCallType  = CallType.fromPackage(packageName)
+        callerName      = intent.getStringExtra(Constants.EXTRA_CALLER_NAME) ?: ""
         callStartMs     = System.currentTimeMillis()
 
         val appName = Constants.VOIP_PACKAGES[packageName] ?: "VoIP"
@@ -147,7 +149,7 @@ class VoipMonitorService : LifecycleService() {
                 id              = 0,
                 filePath        = path,
                 fileName        = FileUtils.fileName(path),
-                callerName      = "",
+                callerName      = callerName,
                 phoneNumber     = "",
                 callType        = activeCallType,
                 isIncoming      = true,
@@ -159,7 +161,7 @@ class VoipMonitorService : LifecycleService() {
                 recordingSource = source,
             )
             repository.insert(domain)
-            AppLogger.i(TAG, "VoIP recording saved: $path (source=$source)")
+            AppLogger.i(TAG, "VoIP recording saved: $path caller=$callerName (source=$source)")
         }
 
         stopForeground(STOP_FOREGROUND_REMOVE)

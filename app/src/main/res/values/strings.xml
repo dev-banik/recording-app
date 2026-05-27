@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">Call Recorder</string>
     <string name="accessibility_service_label">Call Monitor (Call Recorder)</string>
+    <string name="notification_listener_label">Call Recorder Notification Listener</string>
     <string name="accessibility_service_description">Monitors foreground app changes to detect VoIP calls (WhatsApp, Telegram, etc.) and trigger automatic recording. No screen content is read or transmitted.</string>
 
     <!-- Notification channels -->
