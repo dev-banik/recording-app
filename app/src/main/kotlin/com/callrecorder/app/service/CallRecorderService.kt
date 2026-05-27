@@ -142,8 +142,6 @@ class CallRecorderService : LifecycleService() {
         val path = recorderManager.startRecording(CallType.PHONE, quality)
         if (path == null) {
             AppLogger.e(TAG, "All audio strategies failed for phone call")
-            NotificationUtils.sendStatusNotification(this,
-                "Phone call recording failed — mic unavailable (MIUI may be blocking audio during calls)")
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
         } else {
@@ -188,10 +186,6 @@ class CallRecorderService : LifecycleService() {
             )
             repository.insert(domain)
             AppLogger.i(TAG, "Saved phone recording: $path (${durationMs}ms, source=$source)")
-            NotificationUtils.sendStatusNotification(
-                this@CallRecorderService,
-                "Call saved ✓  source: $source  (${durationMs / 1000}s)"
-            )
         }
 
         restoreSpeaker()

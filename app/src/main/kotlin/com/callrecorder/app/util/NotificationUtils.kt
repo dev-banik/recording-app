@@ -16,39 +16,21 @@ object NotificationUtils {
     fun createChannels(context: Context) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+        // IMPORTANCE_MIN: no status-bar icon, no sound — only in shade when pulled down.
+        // This is the lowest visibility Android allows for a foreground service.
         nm.createNotificationChannel(
             NotificationChannel(
                 Constants.CHANNEL_RECORDING,
                 "Recording In Progress",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_MIN
             ).apply {
                 description = "Shown while a call is being recorded"
                 setShowBadge(false)
             }
         )
 
-        nm.createNotificationChannel(
-            NotificationChannel(
-                Constants.CHANNEL_ALERTS,
-                "Alerts",
-                NotificationManager.IMPORTANCE_DEFAULT
-            ).apply {
-                description = "Recording errors and storage warnings"
-            }
-        )
-    }
-
-    /** Posts a one-shot status notification — used for diagnostics and error reporting. */
-    fun sendStatusNotification(context: Context, message: String) {
-        createChannels(context)
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val n = NotificationCompat.Builder(context, Constants.CHANNEL_ALERTS)
-            .setContentTitle("Call Recorder")
-            .setContentText(message)
-            .setSmallIcon(R.drawable.ic_mic)
-            .setAutoCancel(true)
-            .build()
-        nm.notify(Constants.NOTIF_STATUS_ID, n)
+        // Remove legacy alerts channel if it exists from a previous install
+        nm.deleteNotificationChannel("channel_alerts")
     }
 
     fun buildRecordingNotification(

@@ -11,7 +11,6 @@ import com.callrecorder.app.AppLogger
 import com.callrecorder.app.notification.CallerNameCache
 import com.callrecorder.app.service.VoipMonitorService
 import com.callrecorder.app.util.Constants
-import com.callrecorder.app.util.NotificationUtils
 
 /**
  * Detects VoIP calls by watching which app is in the foreground combined
@@ -65,7 +64,6 @@ class CallMonitorAccessibilityService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         AppLogger.i(TAG, "Accessibility service connected")
-        NotificationUtils.sendStatusNotification(this, "Call Recorder accessibility service active")
     }
 
     override fun onDestroy() {
@@ -112,7 +110,6 @@ class CallMonitorAccessibilityService : AccessibilityService() {
         val caller  = CallerNameCache.get(packageName)
         AppLogger.i(TAG, "VoIP recording starting for $appName " +
             "(name=${caller.name.ifBlank { "-" }}, number=${caller.number.ifBlank { "-" }})")
-        NotificationUtils.sendStatusNotification(this, "$appName call detected — starting recorder…")
         try {
             startForegroundService(
                 Intent(this, VoipMonitorService::class.java).apply {
@@ -124,7 +121,6 @@ class CallMonitorAccessibilityService : AccessibilityService() {
             )
         } catch (e: Exception) {
             AppLogger.e(TAG, "Failed to start VoIP recorder: ${e.message}")
-            NotificationUtils.sendStatusNotification(this, "VoIP recorder failed: ${e.message}")
             isVoipCallActive = false
         }
     }
@@ -133,7 +129,6 @@ class CallMonitorAccessibilityService : AccessibilityService() {
         if (!isVoipCallActive) return
         isVoipCallActive = false
         AppLogger.i(TAG, "VoIP call ended — stopping recorder")
-        NotificationUtils.sendStatusNotification(this, "VoIP call ended — saving recording…")
         try {
             // startForeground() is called at the top of VoipMonitorService.onStartCommand()
             // before dispatching, so the 5-second requirement is always met for STOP too.

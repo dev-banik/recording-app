@@ -121,10 +121,6 @@ class VoipMonitorService : LifecycleService() {
                 AppLogger.i(TAG, "VoIP recording started for $appName → $path")
             } else {
                 AppLogger.e(TAG, "All VoIP audio strategies failed for $appName")
-                NotificationUtils.sendStatusNotification(
-                    this@VoipMonitorService,
-                    "VoIP recording failed — no compatible audio source"
-                )
             }
         }
     }

@@ -9,7 +9,6 @@ import com.callrecorder.app.notification.CallerNameCache
 import com.callrecorder.app.service.CallRecorderService
 import com.callrecorder.app.util.Constants
 import com.callrecorder.app.util.ContactUtils
-import com.callrecorder.app.util.NotificationUtils
 
 /**
  * Drives [CallRecorderService] via phone state broadcasts.
@@ -69,7 +68,6 @@ class CallStateReceiver : BroadcastReceiver() {
                         // with the resolved number/name (OFFHOOK may have better info).
                         val phoneNumber = if (isIncoming) pendingIncomingNumber else pendingOutgoingNumber
                         val name = ContactUtils.resolveCallerName(context, phoneNumber)
-                        NotificationUtils.sendStatusNotification(context, "Call connected — recording…")
                         AppLogger.d(TAG, "OFFHOOK — updating caller info: $phoneNumber / $name")
 
                         if (!checkAutoRecord(context)) return
@@ -80,7 +78,6 @@ class CallStateReceiver : BroadcastReceiver() {
                     }
 
                     TelephonyManager.EXTRA_STATE_IDLE -> {
-                        NotificationUtils.sendStatusNotification(context, "Call ended — saving recording…")
                         AppLogger.d(TAG, "IDLE — stopping recorder")
                         try {
                             context.startForegroundService(
@@ -124,7 +121,6 @@ class CallStateReceiver : BroadcastReceiver() {
             )
         } catch (e: Exception) {
             AppLogger.e(TAG, "Failed to start recorder service: ${e.message}")
-            NotificationUtils.sendStatusNotification(context, "Recorder start failed: ${e.message}")
         }
     }
 
