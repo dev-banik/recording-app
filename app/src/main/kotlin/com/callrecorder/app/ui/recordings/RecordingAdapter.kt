@@ -1,10 +1,13 @@
 package com.callrecorder.app.ui.recordings
 
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.callrecorder.app.R
 import com.callrecorder.app.databinding.ItemRecordingBinding
 import com.callrecorder.app.domain.model.RecordingDomain
 import com.callrecorder.app.util.FileUtils
@@ -21,15 +24,23 @@ class RecordingAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         fun bind(item: RecordingDomain) {
-            binding.tvName.text       = item.displayName
-            binding.tvMeta.text       = "${item.timestamp.formatDate()} · ${item.durationMs.formatDuration()}"
-            binding.tvType.text       = item.callType.label
-            binding.tvSize.text       = FileUtils.formatFileSize(item.fileSizeBytes)
-            binding.btnFavorite.isSelected = item.isFavorite
+            binding.tvName.text = item.displayName
+            binding.tvMeta.text = "${item.timestamp.formatDate()} · ${item.durationMs.formatDuration()}"
+            binding.tvType.text = item.callType.label
+            binding.tvSize.text = FileUtils.formatFileSize(item.fileSizeBytes)
 
-            binding.root.setOnClickListener         { onPlay(item) }
-            binding.btnFavorite.setOnClickListener  { onFavorite(item) }
-            binding.btnDelete.setOnClickListener    { onDelete(item) }
+            // Switch icon and tint based on favourite state
+            if (item.isFavorite) {
+                binding.btnFavorite.setIconResource(R.drawable.ic_star)
+                binding.btnFavorite.iconTint = ColorStateList.valueOf(Color.parseColor("#FFD600"))
+            } else {
+                binding.btnFavorite.setIconResource(R.drawable.ic_star_outline)
+                binding.btnFavorite.iconTint = null  // restore default theme tint
+            }
+
+            binding.root.setOnClickListener        { onPlay(item) }
+            binding.btnFavorite.setOnClickListener { onFavorite(item) }
+            binding.btnDelete.setOnClickListener   { onDelete(item) }
         }
     }
 

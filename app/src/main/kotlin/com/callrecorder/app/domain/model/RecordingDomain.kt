@@ -16,7 +16,12 @@ data class RecordingDomain(
     val recordingSource: String,
 ) {
     val displayName: String get() = customLabel.ifBlank {
-        callerName.ifBlank { phoneNumber.ifBlank { "Unknown" } }
+        callerName.ifBlank {
+            phoneNumber.ifBlank {
+                // VoIP calls have no phone number — show the app name as the label
+                if (callType != CallType.PHONE) callType.label else "Unknown"
+            }
+        }
     }
 }
 
