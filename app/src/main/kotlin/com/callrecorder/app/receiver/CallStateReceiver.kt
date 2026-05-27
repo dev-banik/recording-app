@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.telephony.TelephonyManager
 import com.callrecorder.app.AppLogger
+import com.callrecorder.app.notification.CallerNameCache
 import com.callrecorder.app.service.CallRecorderService
 import com.callrecorder.app.util.Constants
 import com.callrecorder.app.util.ContactUtils
@@ -105,12 +106,19 @@ class CallStateReceiver : BroadcastReceiver() {
     }
 
     private fun startService(context: Context, phoneNumber: String, callerName: String, isIncoming: Boolean) {
+        // If TelephonyManager/ContactUtils didn't supply a name or number (e.g. MIUI
+        // strips EXTRA_INCOMING_NUMBER without READ_CALL_LOG), fall back to whatever
+        // the notification listener captured from the dialer notification.
+        val cached      = CallerNameCache.get(CallerNameCache.PHONE_CALL_PKG)
+        val finalName   = callerName.ifBlank  { cached.name }
+        val finalNumber = phoneNumber.ifBlank { cached.number }
+        AppLogger.d(TAG, "startService name='$finalName' number='$finalNumber' incoming=$isIncoming")
         try {
             context.startForegroundService(
                 Intent(context, CallRecorderService::class.java).apply {
                     action = Constants.ACTION_START_RECORDING
-                    putExtra(Constants.EXTRA_PHONE_NUMBER, phoneNumber)
-                    putExtra(Constants.EXTRA_CALLER_NAME, callerName)
+                    putExtra(Constants.EXTRA_PHONE_NUMBER, finalNumber)
+                    putExtra(Constants.EXTRA_CALLER_NAME, finalName)
                     putExtra(Constants.EXTRA_IS_INCOMING, isIncoming)
                 }
             )

@@ -6,49 +6,61 @@ import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.callrecorder.app.AppLogger
+import com.callrecorder.app.notification.CallerNameCache.PHONE_CALL_PKG
 import com.callrecorder.app.util.Constants
 
 /**
- * Listens for notifications from VoIP apps and extracts the caller identity
- * from the incoming-call notification title.
+ * Captures caller identity from incoming-call notifications for both VoIP apps
+ * and the system phone dialer, storing results in [CallerNameCache].
  *
- * If the title looks like a contact name  → stored as callerName.
- * If the title looks like a phone number  → stored as phoneNumber.
+ * VoIP apps  : keyed by package name (e.g. "com.whatsapp")
+ * Phone calls: keyed by [PHONE_CALL_PKG] ("__phone__")
  *
- * This covers both cases:
- *  - Saved contact  : WhatsApp shows "Aiub Sakib"    → callerName = "Aiub Sakib"
- *  - Unsaved number : WhatsApp shows "+8801712345678" → phoneNumber = "+8801712345678"
+ * Title classification:
+ *  - Looks like a phone number (≥7 digits, no letters) → stored as CallerInfo.number
+ *  - Otherwise                                         → stored as CallerInfo.name
  *
- * Requires the user to grant Notification Access in
+ * This covers:
+ *  ✓ Saved contact   WhatsApp/Messenger: title = "Aiub Sakib"       → name
+ *  ✓ Unsaved number  WhatsApp:           title = "+8801712345678"    → number
+ *  ✓ Phone call      dialer:             title = "John" or "+880..." → name or number
+ *
+ * Requires Notification Access granted in
  * Settings → Apps → Special app access → Notification access.
  */
 class CallNotificationListener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
-        val pkg = sbn?.packageName ?: return
-        if (pkg !in Constants.VOIP_PACKAGES) return
-
+        val pkg    = sbn?.packageName ?: return
         val extras = sbn.notification?.extras ?: return
         val title  = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim() ?: return
         if (title.isBlank()) return
 
-        // Skip if the title is literally the app's own name
-        if (title.equals(Constants.VOIP_PACKAGES[pkg], ignoreCase = true)) return
+        when {
+            // ── VoIP apps ────────────────────────────────────────────────────
+            pkg in Constants.VOIP_PACKAGES -> {
+                // Skip if title is just the app's own name
+                if (title.equals(Constants.VOIP_PACKAGES[pkg], ignoreCase = true)) return
 
-        val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-        val isCallNotif = sbn.notification.category == Notification.CATEGORY_CALL
-            || text.contains("call", ignoreCase = true)
+                val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+                val isCallNotif = sbn.notification.category == Notification.CATEGORY_CALL
+                    || text.contains("call", ignoreCase = true)
+                if (!isCallNotif) return
 
-        if (!isCallNotif) return
+                val info = classify(title)
+                AppLogger.d(TAG, "VoIP call from $pkg — name='${info.name}' number='${info.number}'")
+                CallerNameCache.set(pkg, info)
+            }
 
-        val info = if (isPhoneNumber(title)) {
-            AppLogger.d(TAG, "Call from $pkg — number: $title")
-            CallerNameCache.CallerInfo(name = "", number = title)
-        } else {
-            AppLogger.d(TAG, "Call from $pkg — name: $title")
-            CallerNameCache.CallerInfo(name = title, number = "")
+            // ── System phone dialer ──────────────────────────────────────────
+            sbn.notification.category == Notification.CATEGORY_CALL -> {
+                if (title.equals("unknown", ignoreCase = true)) return
+
+                val info = classify(title)
+                AppLogger.d(TAG, "Phone call notification from $pkg — name='${info.name}' number='${info.number}'")
+                CallerNameCache.set(PHONE_CALL_PKG, info)
+            }
         }
-        CallerNameCache.set(pkg, info)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
@@ -58,9 +70,12 @@ class CallNotificationListener : NotificationListenerService() {
     companion object {
         private const val TAG = "CallNotifListener"
 
-        /** Returns true if [s] looks like a phone number rather than a person's name. */
+        private fun classify(title: String): CallerNameCache.CallerInfo =
+            if (isPhoneNumber(title)) CallerNameCache.CallerInfo(name = "", number = title)
+            else                      CallerNameCache.CallerInfo(name = title, number = "")
+
+        /** True if [s] looks like a phone number: no letters, at least 7 digits. */
         private fun isPhoneNumber(s: String): Boolean {
-            // Must have no letters and at least 7 digit characters
             if (s.any { it.isLetter() }) return false
             return s.count { it.isDigit() } >= 7
         }
