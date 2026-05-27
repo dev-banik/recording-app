@@ -39,6 +39,9 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupListeners()
         observeState()
+        // Speaker mode is read by services via SharedPreferences — initialise it here
+        val prefs = requireContext().getSharedPreferences("recorder_settings", android.content.Context.MODE_PRIVATE)
+        binding.switchSpeakerRecord.isChecked = prefs.getBoolean(Constants.PREF_SPEAKER_RECORD, false)
     }
 
     private fun setupListeners() {
@@ -67,6 +70,12 @@ class SettingsFragment : Fragment() {
 
         binding.rowNotificationAccess.setOnClickListener {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        }
+
+        binding.switchSpeakerRecord.setOnCheckedChangeListener { _, checked ->
+            requireContext()
+                .getSharedPreferences("recorder_settings", android.content.Context.MODE_PRIVATE)
+                .edit().putBoolean(Constants.PREF_SPEAKER_RECORD, checked).apply()
         }
     }
 

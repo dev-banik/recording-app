@@ -46,6 +46,7 @@ object Constants {
     const val PREF_AUTO_DELETE_DAYS  = "auto_delete_days"
     const val PREF_HIDDEN_MODE       = "hidden_mode"
     const val PREF_MEDIA_PROJ_INTENT = "media_projection_intent"
+    const val PREF_SPEAKER_RECORD    = "speaker_record"
 
     // ── VoIP package names ────────────────────────────────────────────────
     val VOIP_PACKAGES = mapOf(

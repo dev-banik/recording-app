@@ -5,6 +5,7 @@ import android.app.Notification
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -47,6 +48,7 @@ class CallRecorderService : LifecycleService() {
     private var callerName   = ""
     private var isIncoming   = true
     private var callStartMs  = 0L
+    private var speakerEnabledByUs = false
 
     override fun onCreate() {
         super.onCreate()
@@ -110,11 +112,12 @@ class CallRecorderService : LifecycleService() {
 
         if (recorderManager.isRecording) {
             // Second START (OFFHOOK after RINGING) — recording is already running.
-            // Just update the metadata fields with whatever info OFFHOOK gave us.
+            // Update metadata and optionally enable speaker mode for better capture.
             if (newNumber.isNotBlank()) phoneNumber = newNumber
             if (newName.isNotBlank())   callerName  = newName
             isIncoming = newIsInc
             AppLogger.d(TAG, "Already recording — metadata updated: $phoneNumber / $callerName")
+            maybeEnableSpeaker()
             return
         }
 
@@ -191,6 +194,7 @@ class CallRecorderService : LifecycleService() {
             )
         }
 
+        restoreSpeaker()
         releaseWakeLock()
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
@@ -198,6 +202,7 @@ class CallRecorderService : LifecycleService() {
 
     override fun onDestroy() {
         if (recorderManager.isRecording) recorderManager.stopRecording()
+        restoreSpeaker()
         releaseWakeLock()
         serviceScope.cancel()
         super.onDestroy()
@@ -206,6 +211,44 @@ class CallRecorderService : LifecycleService() {
     override fun onBind(intent: Intent): IBinder? {
         super.onBind(intent)
         return null
+    }
+
+    /**
+     * If the user enabled "Speaker mode for recording", switch the call to
+     * loudspeaker at OFFHOOK so the MIC source can capture both sides.
+     * Only activates when the active strategy does NOT already capture call audio
+     * natively (i.e. it is not an AudioRecord(VOICE_CALL/DOWNLINK/UPLINK) strategy).
+     */
+    @Suppress("DEPRECATION")
+    private fun maybeEnableSpeaker() {
+        val prefs = getSharedPreferences("recorder_settings", MODE_PRIVATE)
+        if (!prefs.getBoolean(Constants.PREF_SPEAKER_RECORD, false)) return
+
+        val stratName = recorderManager.getActiveStrategyName()
+        val hasNativeCallCapture = "VOICE_CALL" in stratName
+            || "VOICE_DOWNLINK" in stratName
+            || "VOICE_UPLINK" in stratName
+
+        if (hasNativeCallCapture) {
+            AppLogger.d(TAG, "Native call-capture strategy active — speaker mode not needed")
+            return
+        }
+
+        val am = getSystemService(AUDIO_SERVICE) as AudioManager
+        if (!am.isSpeakerphoneOn) {
+            am.isSpeakerphoneOn = true
+            speakerEnabledByUs  = true
+            AppLogger.i(TAG, "Speaker mode enabled for recording (strategy=$stratName)")
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun restoreSpeaker() {
+        if (speakerEnabledByUs) {
+            (getSystemService(AUDIO_SERVICE) as AudioManager).isSpeakerphoneOn = false
+            speakerEnabledByUs = false
+            AppLogger.i(TAG, "Speaker mode restored")
+        }
     }
 
     private fun acquireWakeLock() {

@@ -102,17 +102,23 @@ class AudioRecorderManager @Inject constructor(
         }
 
     private fun phoneStrategies(): List<RecordingStrategy> = buildList {
-        // MediaRecorder-based (captures call audio on most manufacturer ROMs)
+        // AudioRecord first — lower-level than MediaRecorder, bypasses MIUI restrictions
+        // that block setAudioSource() at the MediaRecorder layer.
+        add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_CALL))
+        add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_DOWNLINK))
+        add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_UPLINK))
+        // MediaRecorder variants (work on many Samsung/OPPO/Vivo ROMs)
         add(MediaRecorderStrategy.voiceCall())
         add(MediaRecorderStrategy.voiceDownlink())
         add(MediaRecorderStrategy.voiceUplink())
         add(MediaRecorderStrategy.voiceCommunication())
+        // Generic mic sources — capture your voice; with speaker mode enabled, also
+        // capture the other side via speaker bleed (see PREF_SPEAKER_RECORD).
         add(MediaRecorderStrategy.voiceRecognition())
-        add(MediaRecorderStrategy.unprocessed())
-        // AudioRecord-based (lower-level path, sometimes bypasses ROM call-recording blocks)
         add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_RECOGNITION))
+        add(MediaRecorderStrategy.unprocessed())
         add(MicrophoneStrategy(MediaRecorder.AudioSource.UNPROCESSED))
-        add(MicrophoneStrategy())
+        add(MicrophoneStrategy()) // raw MIC — most reliable with speaker mode
     }
 
     private fun voipStrategies(): List<RecordingStrategy> = buildList {
