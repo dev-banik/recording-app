@@ -101,7 +101,7 @@ class PlayerFragment : Fragment() {
                         binding.tvDuration.text = rec.durationMs.formatDuration()
                         binding.btnFavorite.isSelected = rec.isFavorite
                     }
-                    binding.btnPlayPause.setIconResource(
+                    binding.btnPlayPause.setImageResource(
                         if (state.isPlaying) R.drawable.ic_pause else R.drawable.ic_play
                     )
                     state.error?.let { requireContext().toast(it, long = true) }
