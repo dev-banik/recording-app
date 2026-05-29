@@ -108,6 +108,8 @@ class CallMonitorAccessibilityService : AccessibilityService() {
         isVoipCallActive = true
         val appName = Constants.VOIP_PACKAGES[packageName] ?: packageName
         val caller  = CallerNameCache.get(packageName)
+        // Clear the pending flag so CallStateReceiver doesn't also start a duplicate session.
+        CallerNameCache.pendingVoipPackage = null
         AppLogger.i(TAG, "VoIP recording starting for $appName " +
             "(name=${caller.name.ifBlank { "-" }}, number=${caller.number.ifBlank { "-" }})")
         try {

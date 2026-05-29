@@ -50,6 +50,12 @@ class CallNotificationListener : NotificationListenerService() {
                 val info = classify(title)
                 AppLogger.d(TAG, "VoIP call from $pkg — name='${info.name}' number='${info.number}'")
                 CallerNameCache.set(pkg, info)
+                // Mark pending so CallStateReceiver can route telephony events to VoipMonitorService.
+                // On MIUI, Messenger (and others) use ConnectionService which fires RINGING/IDLE
+                // through the telephony stack — indistinguishable from a GSM call at that layer.
+                if (sbn.notification.category == Notification.CATEGORY_CALL) {
+                    CallerNameCache.pendingVoipPackage = pkg
+                }
             }
 
             // ── System phone dialer ──────────────────────────────────────────

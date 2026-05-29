@@ -7,6 +7,7 @@ import android.telephony.TelephonyManager
 import com.callrecorder.app.AppLogger
 import com.callrecorder.app.notification.CallerNameCache
 import com.callrecorder.app.service.CallRecorderService
+import com.callrecorder.app.service.VoipMonitorService
 import com.callrecorder.app.util.Constants
 import com.callrecorder.app.util.ContactUtils
 
@@ -51,21 +52,37 @@ class CallStateReceiver : BroadcastReceiver() {
 
                 when (state) {
                     TelephonyManager.EXTRA_STATE_RINGING -> {
-                        pendingIncomingNumber = number
+                        pendingIncomingNumber = number ?: ""
                         isIncoming = true
-                        AppLogger.d(TAG, "Incoming call — starting recorder early (before MIUI audio lock)")
 
                         if (!checkAutoRecord(context)) return
-                        startService(context,
-                            phoneNumber = number,
-                            callerName  = ContactUtils.resolveCallerName(context, number),
-                            isIncoming  = true)
+
+                        // Check if a VoIP app posted a CATEGORY_CALL notification just before
+                        // this RINGING event — that means MIUI is routing a VoIP call (e.g.
+                        // Messenger) through the telephony stack via ConnectionService.
+                        val voipPkg = CallerNameCache.pendingVoipPackage
+                        if (voipPkg != null) {
+                            CallerNameCache.pendingVoipPackage = null
+                            voipRoutedPkg = voipPkg
+                            AppLogger.i(TAG, "RINGING from VoIP-via-ConnectionService ($voipPkg) — routing to VoipMonitorService")
+                            startVoipService(context, voipPkg)
+                        } else {
+                            AppLogger.d(TAG, "Incoming call — starting recorder early (before MIUI audio lock)")
+                            startService(context,
+                                phoneNumber = number ?: "",
+                                callerName  = ContactUtils.resolveCallerName(context, number ?: ""),
+                                isIncoming  = true)
+                        }
                     }
 
                     TelephonyManager.EXTRA_STATE_OFFHOOK -> {
                         // Recording is already running from RINGING / NEW_OUTGOING_CALL.
-                        // Send a second START so the service can update its caller metadata
-                        // with the resolved number/name (OFFHOOK may have better info).
+                        // Send a second START so the service can update its caller metadata.
+                        if (voipRoutedPkg != null) {
+                            // VoIP call — VoipMonitorService already has the info, nothing to update.
+                            AppLogger.d(TAG, "OFFHOOK for VoIP-routed call ($voipRoutedPkg) — no action needed")
+                            return
+                        }
                         val phoneNumber = if (isIncoming) pendingIncomingNumber else pendingOutgoingNumber
                         val name = ContactUtils.resolveCallerName(context, phoneNumber)
                         AppLogger.d(TAG, "OFFHOOK — updating caller info: $phoneNumber / $name")
@@ -79,18 +96,29 @@ class CallStateReceiver : BroadcastReceiver() {
 
                     TelephonyManager.EXTRA_STATE_IDLE -> {
                         AppLogger.d(TAG, "IDLE — stopping recorder")
-                        try {
-                            context.startForegroundService(
-                                Intent(context, CallRecorderService::class.java).apply {
-                                    action = Constants.ACTION_STOP_RECORDING
-                                }
-                            )
-                        } catch (e: Exception) {
-                            AppLogger.e(TAG, "Failed to stop recorder service: ${e.message}")
-                        }
+                        val routedPkg = voipRoutedPkg
+                        voipRoutedPkg = null
                         pendingIncomingNumber = ""
                         pendingOutgoingNumber = ""
                         isIncoming = true
+                        try {
+                            if (routedPkg != null) {
+                                // This was a VoIP call routed through telephony — stop VoipMonitorService.
+                                context.startForegroundService(
+                                    Intent(context, VoipMonitorService::class.java).apply {
+                                        action = Constants.ACTION_STOP_VOIP
+                                    }
+                                )
+                            } else {
+                                context.startForegroundService(
+                                    Intent(context, CallRecorderService::class.java).apply {
+                                        action = Constants.ACTION_STOP_RECORDING
+                                    }
+                                )
+                            }
+                        } catch (e: Exception) {
+                            AppLogger.e(TAG, "Failed to stop recorder service: ${e.message}")
+                        }
                     }
                 }
             }
@@ -124,10 +152,28 @@ class CallStateReceiver : BroadcastReceiver() {
         }
     }
 
+    private fun startVoipService(context: Context, pkg: String) {
+        val caller = CallerNameCache.get(pkg)
+        try {
+            context.startForegroundService(
+                Intent(context, VoipMonitorService::class.java).apply {
+                    action = Constants.ACTION_START_VOIP
+                    putExtra(Constants.EXTRA_CALL_TYPE, pkg)
+                    putExtra(Constants.EXTRA_CALLER_NAME, caller.name)
+                    putExtra(Constants.EXTRA_PHONE_NUMBER, caller.number)
+                }
+            )
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "Failed to start VoIP recorder for $pkg: ${e.message}")
+        }
+    }
+
     companion object {
         private const val TAG = "CallStateReceiver"
         private var pendingIncomingNumber = ""
         private var pendingOutgoingNumber = ""
-        private var isIncoming = true
+        private var isIncoming    = true
+        // Non-null when a VoIP call (e.g. Messenger) is being tracked via telephony state.
+        private var voipRoutedPkg: String? = null
     }
 }

@@ -24,4 +24,13 @@ object CallerNameCache {
 
     fun set(pkg: String, info: CallerInfo) { map[pkg] = info }
     fun get(pkg: String): CallerInfo = map[pkg] ?: CallerInfo("", "")
+
+    /**
+     * Set by [com.callrecorder.app.notification.CallNotificationListener] when a VoIP app
+     * posts a CATEGORY_CALL notification. On MIUI, apps like Messenger route their calls
+     * through Android's ConnectionService API which fires telephony state changes (RINGING
+     * etc.). [com.callrecorder.app.receiver.CallStateReceiver] reads this flag to detect
+     * such calls and route them to VoipMonitorService instead of CallRecorderService.
+     */
+    @Volatile var pendingVoipPackage: String? = null
 }

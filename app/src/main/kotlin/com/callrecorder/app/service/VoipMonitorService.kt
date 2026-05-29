@@ -98,6 +98,18 @@ class VoipMonitorService : LifecycleService() {
 
     private fun handleVoipStart(intent: Intent) {
         val packageName = intent.getStringExtra(Constants.EXTRA_CALL_TYPE) ?: ""
+
+        if (recorderManager.isRecording) {
+            // Second START (e.g. accessibility + phone-state both fired for the same call).
+            // Just update metadata — don't open a second AudioRecord session.
+            val name = intent.getStringExtra(Constants.EXTRA_CALLER_NAME) ?: ""
+            val num  = intent.getStringExtra(Constants.EXTRA_PHONE_NUMBER) ?: ""
+            if (name.isNotBlank()) callerName  = name
+            if (num.isNotBlank())  phoneNumber = num
+            AppLogger.d(TAG, "Already recording — metadata updated for $packageName")
+            return
+        }
+
         activePackageName = packageName
         activeCallType    = CallType.fromPackage(packageName)
         callerName      = intent.getStringExtra(Constants.EXTRA_CALLER_NAME) ?: ""
