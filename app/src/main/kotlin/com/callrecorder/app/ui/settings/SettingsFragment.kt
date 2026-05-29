@@ -1,22 +1,24 @@
 package com.callrecorder.app.ui.settings
 
+import android.content.ComponentName
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.os.PowerManager
 import android.provider.Settings
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
-import com.callrecorder.app.R
 import com.callrecorder.app.databinding.FragmentSettingsBinding
 import com.callrecorder.app.notification.CallNotificationListener
 import com.callrecorder.app.util.Constants
+import com.google.android.material.color.MaterialColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -39,7 +41,6 @@ class SettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupListeners()
         observeState()
-        // Speaker mode is read by services via SharedPreferences — initialise it here
         val prefs = requireContext().getSharedPreferences("recorder_settings", android.content.Context.MODE_PRIVATE)
         binding.switchSpeakerRecord.isChecked = prefs.getBoolean(Constants.PREF_SPEAKER_RECORD, false)
     }
@@ -72,6 +73,10 @@ class SettingsFragment : Fragment() {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
 
+        binding.rowBatteryOptimization.setOnClickListener {
+            openBatterySettings()
+        }
+
         binding.switchSpeakerRecord.setOnCheckedChangeListener { _, checked ->
             requireContext()
                 .getSharedPreferences("recorder_settings", android.content.Context.MODE_PRIVATE)
@@ -98,19 +103,63 @@ class SettingsFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         updateNotificationAccessStatus()
+        updateBatteryOptimizationStatus()
     }
 
     private fun updateNotificationAccessStatus() {
         val granted = CallNotificationListener.isGranted(requireContext())
         binding.tvNotificationAccessStatus.text = if (granted) "Granted" else "Tap to enable"
-        val color = if (granted)
-            com.google.android.material.R.attr.colorPrimary
-        else
-            com.google.android.material.R.attr.colorError
-        val resolvedColor = com.google.android.material.color.MaterialColors.getColor(
-            binding.tvNotificationAccessStatus, color
+        val colorAttr = if (granted) com.google.android.material.R.attr.colorPrimary
+                        else         com.google.android.material.R.attr.colorError
+        binding.tvNotificationAccessStatus.setTextColor(
+            MaterialColors.getColor(binding.tvNotificationAccessStatus, colorAttr)
         )
-        binding.tvNotificationAccessStatus.setTextColor(resolvedColor)
+    }
+
+    private fun updateBatteryOptimizationStatus() {
+        val exempt = isIgnoringBatteryOptimizations()
+        binding.tvBatteryOptimizationStatus.text = if (exempt) "Unrestricted" else "Tap to fix"
+        val colorAttr = if (exempt) com.google.android.material.R.attr.colorPrimary
+                        else        com.google.android.material.R.attr.colorError
+        binding.tvBatteryOptimizationStatus.setTextColor(
+            MaterialColors.getColor(binding.tvBatteryOptimizationStatus, colorAttr)
+        )
+    }
+
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        val pm = requireContext().getSystemService(PowerManager::class.java)
+        return pm.isIgnoringBatteryOptimizations(requireContext().packageName)
+    }
+
+    private fun openBatterySettings() {
+        // 1. Try MIUI-specific battery settings page for this app directly
+        val miuiIntent = Intent().apply {
+            component = ComponentName(
+                "com.miui.powerkeeper",
+                "com.miui.powerkeeper.ui.HiddenAppsContainerManagementActivity"
+            )
+            putExtra("package_name", requireContext().packageName)
+            putExtra("package_label", requireContext().getString(com.callrecorder.app.R.string.app_name))
+        }
+        try {
+            startActivity(miuiIntent)
+            return
+        } catch (_: Exception) { /* not MIUI or activity not found */ }
+
+        // 2. Try standard Android "ignore battery optimizations" request dialog
+        try {
+            startActivity(
+                Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                    data = Uri.parse("package:${requireContext().packageName}")
+                }
+            )
+            return
+        } catch (_: Exception) { /* some OEMs block this intent */ }
+
+        // 3. Final fallback: open the general battery optimization settings list
+        try {
+            startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
+        } catch (_: Exception) { /* nothing more we can do */ }
     }
 
     private fun showQualityDialog() {

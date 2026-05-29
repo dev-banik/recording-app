@@ -64,8 +64,11 @@ class AudioPlaybackCaptureStrategy(
             .addMatchingUsage(AudioAttributes.USAGE_MEDIA)
             .addMatchingUsage(AudioAttributes.USAGE_GAME)
             .addMatchingUsage(AudioAttributes.USAGE_UNKNOWN)
-            // VOICE_COMMUNICATION is intentionally omitted — most VoIP apps
-            // opt out; attempting it just returns silence.
+            // VOICE_COMMUNICATION: VoIP apps typically opt out so this returns silence
+            // for WhatsApp etc. However on MIUI, the ROM routes GSM call earpiece audio
+            // through this usage in its playback mix — adding it is the only way to
+            // capture the "other side" of a phone call without root on MIUI.
+            .addMatchingUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
             .build()
 
         val audioFormat = AudioFormat.Builder()

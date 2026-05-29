@@ -102,6 +102,12 @@ class AudioRecorderManager @Inject constructor(
         }
 
     private fun phoneStrategies(): List<RecordingStrategy> = buildList {
+        // Try AudioPlaybackCapture first — on MIUI, the ROM routes GSM call earpiece
+        // audio through USAGE_VOICE_COMMUNICATION in the playback mix. If a
+        // MediaProjection token is available this captures the other side without root.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            playbackCaptureStrategy?.let { add(it) }
+        }
         // AudioRecord at 8 kHz — phone-quality sample rate; some MIUI/OEM HALs
         // allow VOICE_CALL source at this rate even when they block 16 kHz.
         add(MicrophoneStrategy(MediaRecorder.AudioSource.VOICE_CALL,     8_000))
